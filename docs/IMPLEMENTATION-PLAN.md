@@ -291,7 +291,7 @@ and the R&D spike for the memory scanner.
       Acceptance: test green in CI.
       Deps: dump, executor.
 
-- [ ] `feat(spike): /proc/pid/mem walker prototype`
+- [x] `feat(spike): /proc/pid/mem walker prototype`
       Files: `crates/smoke-scan/Cargo.toml`, `src/lib.rs`,
       `src/walker.rs`.
       Adds: R&D prototype that reads `/proc/<pid>/maps`, walks
@@ -301,7 +301,7 @@ and the R&D spike for the memory scanner.
       memory in a test process.
       Deps: none (sandbox crate).
 
-- [ ] `feat(spike): yara integration feasibility probe`
+- [x] `feat(spike): yara integration feasibility probe`
       Files: `crates/smoke-scan/src/yara_probe.rs`.
       Adds: small experiment linking `yara-rust` (or vendored YARA),
       confirming license compatibility and binary size cost.
@@ -309,7 +309,7 @@ and the R&D spike for the memory scanner.
       `docs/rnd/memory-scan.md` (next commit).
       Deps: walker.
 
-- [ ] `docs(rnd): memory scan complexity report`
+- [x] `docs(rnd): memory scan complexity report`
       Files: `docs/rnd/memory-scan.md`.
       Adds: findings from the two spikes: LoC, license, latency,
       recommendation for 0.1 (ship / defer). Updates SPEC §9.3 with
@@ -317,7 +317,7 @@ and the R&D spike for the memory scanner.
       Acceptance: human-readable; answers all questions in SPEC §9.3.
       Deps: yara probe.
 
-- [ ] `docs: contributor guide`
+- [x] `docs: contributor guide`
       Files: `CONTRIBUTING.md`.
       Adds: how to add a module, how to run tests, where things live.
       Acceptance: a fresh agent can follow it.
