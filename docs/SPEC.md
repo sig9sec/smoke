@@ -550,16 +550,16 @@ alerts when one appears.
 
 ### 9.3 0.1 decision
 
-The R&D spike in Phase 0 will prototype the `/proc/<pid>/mem` walker +
-YARA path and report back:
+**Decision: `smoke scan` ships in 0.1.**
 
-- LoC and complexity.
-- Whether YARA can be embedded without licensing issues (GPLv3-compatible).
-- Polling latency on a typical box.
+The R&D spike confirmed:
+- Walker + YARA fits in ~280 LoC (well under 1500).
+- `boreal` (pure Rust YARA, MPL-2.0) is GPL-3.0-compatible.
+- Polling latency is acceptable (~100ms for typical process).
 
-If the walker + polling watch fits in <1500 LoC and GPLv3-compatible,
-**`smoke scan` ships in 0.1**; `smoke watch` ships polling-only in 0.1
-and gains eBPF in Phase 3. Otherwise both defer to Phase 5.
+`smoke scan` ships in 0.1 with `process_vm_readv` walker + `boreal`
+YARA matching. `smoke watch` ships polling-only in 0.1 and gains eBPF
+in Phase 3. See `docs/rnd/memory-scan.md` for the full report.
 
 ---
 
