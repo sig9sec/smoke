@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+pub mod coverage;
 pub mod error;
 pub mod identifier;
 
+pub use coverage::{Coverage, Requirements, Risk, RiskLevel, Strategy, Tier};
 pub use error::{Result, SmokeError};
 pub use identifier::{Category, Finding, Findings, IdentifierId};
