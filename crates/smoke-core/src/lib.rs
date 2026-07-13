@@ -15,5 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub mod error;
+pub mod identifier;
 
 pub use error::{Result, SmokeError};
+pub use identifier::{Category, Finding, Findings, IdentifierId};
