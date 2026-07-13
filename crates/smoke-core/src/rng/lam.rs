@@ -14,16 +14,35 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pub mod coverage;
-pub mod error;
-pub mod identifier;
-pub mod module;
-pub mod rng;
-pub mod vendors;
+use super::random;
+use rand::SeedableRng;
+use rand_chacha::ChaCha20Rng;
 
-pub use coverage::{Coverage, Requirements, Risk, RiskLevel, Strategy, Tier};
-pub use error::{Result, SmokeError};
-pub use identifier::{Category, Finding, Findings, IdentifierId};
-pub use module::{
-    ApplyCtx, ApplyReport, Change, ModuleStatus, RevertReport, RotateCtx, RotateReport, SmokeModule,
-};
+pub struct LamProfile {
+    rng: ChaCha20Rng,
+}
+
+impl LamProfile {
+    pub fn new(seed: u64) -> Self {
+        Self {
+            rng: ChaCha20Rng::seed_from_u64(seed),
+        }
+    }
+
+    pub fn mac(&mut self) -> String {
+        random::random_mac(&mut self.rng)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lam_bit_set() {
+        let mut p = LamProfile::new(42);
+        let mac = p.mac();
+        let first = u8::from_str_radix(&mac[..2], 16).unwrap();
+        assert_eq!(first & 0x02, 0x02);
+    }
+}

@@ -14,16 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pub mod coverage;
-pub mod error;
-pub mod identifier;
-pub mod module;
-pub mod rng;
-pub mod vendors;
+pub mod consistent;
+pub mod lam;
+pub mod pinned;
+pub mod random;
 
-pub use coverage::{Coverage, Requirements, Risk, RiskLevel, Strategy, Tier};
-pub use error::{Result, SmokeError};
-pub use identifier::{Category, Finding, Findings, IdentifierId};
-pub use module::{
-    ApplyCtx, ApplyReport, Change, ModuleStatus, RevertReport, RotateCtx, RotateReport, SmokeModule,
-};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Profile {
+    Random,
+    Consistent,
+    LocallyAdministered,
+    Pinned,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ValueOverride {
+    UseProfile,
+    Fixed(String),
+    Random,
+    Keep,
+}
