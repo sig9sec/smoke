@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod cli;
+mod output;
 
 use clap::Parser;
 use cli::{Cli, Commands, ConfigAction, ServiceAction};
