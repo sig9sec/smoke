@@ -77,7 +77,7 @@ pub fn parse_maps(pid: u32) -> io::Result<Vec<MemoryRegion>> {
     Ok(regions)
 }
 
-fn read_remote(pid: u32, addr: u64, buf: &mut [u8]) -> io::Result<usize> {
+pub fn read_remote_slice(pid: u32, addr: u64, buf: &mut [u8]) -> io::Result<usize> {
     let local_iov = libc::iovec {
         iov_base: buf.as_mut_ptr() as *mut libc::c_void,
         iov_len: buf.len(),
@@ -116,7 +116,7 @@ pub fn scan_process(pid: u32, needle: &[u8]) -> io::Result<Vec<ScanHit>> {
         }
 
         let mut buf = vec![0u8; size];
-        match read_remote(pid, region.start, &mut buf) {
+        match read_remote_slice(pid, region.start, &mut buf) {
             Ok(n) => {
                 let search_buf = &buf[..n];
                 let mut offset = 0;
