@@ -18,6 +18,7 @@ pub mod backup;
 pub mod config;
 pub mod coverage;
 pub mod error;
+pub mod executor;
 pub mod identifier;
 pub mod module;
 pub mod registry;
