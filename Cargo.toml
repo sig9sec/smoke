@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/smoke-core", "crates/smoke-cli"]
+members = ["crates/smoke-core", "crates/smoke-cli", "crates/smoke-scan"]
 
 [workspace.package]
 version = "0.1.0"
