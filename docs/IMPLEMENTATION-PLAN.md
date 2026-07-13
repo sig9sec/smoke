@@ -60,38 +60,38 @@ and the R&D spike for the memory scanner.
 
 ### P0 - Commits
 
-- [ ] `chore: cargo workspace skeleton`
+- [x] `chore: cargo workspace skeleton`
       Files: `Cargo.toml` (workspace), `.gitignore`, `rust-toolchain.toml`.
       Acceptance: `cargo build` succeeds with empty workspace.
       Deps: none.
 
-- [ ] `chore: add rustfmt and clippy config`
+- [x] `chore: add rustfmt and clippy config`
       Files: `.rustfmt.toml`, `clippy.toml`.
       Acceptance: `cargo fmt --check` and `cargo clippy` run with
       project-wide rules (max-width 100, deny warnings, etc.).
       Deps: previous.
 
-- [ ] `ci: add github actions workflow`
+- [x] `ci: add github actions workflow`
       Files: `.github/workflows/ci.yml`.
       Acceptance: workflow runs fmt + clippy + test on Arch container
       and Debian container for every PR and push to `main`.
       Deps: previous.
 
-- [ ] `feat(core): crate skeleton with GPL headers`
+- [x] `feat(core): crate skeleton with GPL headers`
       Files: `crates/smoke-core/Cargo.toml`, `crates/smoke-core/src/lib.rs`,
       `crates/smoke-core/build.rs` (header check).
       Acceptance: `cargo build -p smoke-core` succeeds. Every `.rs`
       carries the GPLv3 header.
       Deps: chore workspace.
 
-- [ ] `feat(core): error types and Result alias`
+- [x] `feat(core): error types and Result alias`
       Files: `crates/smoke-core/src/error.rs`, re-export from `lib.rs`.
       Adds: `SmokeError` enum (Io, Config, State, Permission, Module,
       NotRoot, Verify, Unsupported), `type Result<T>`.
       Acceptance: unit tests for common error Display.
       Deps: previous.
 
-- [ ] `feat(core): identifier model`
+- [x] `feat(core): identifier model`
       Files: `crates/smoke-core/src/identifier.rs`.
       Adds: `IdentifierId` (string newtype), `Category` enum
       (Dmi, MachineId, Hostname, Net, Storage, FsUuid, Bootloader,
@@ -101,7 +101,7 @@ and the R&D spike for the memory scanner.
       Acceptance: serde round-trip, unit tests.
       Deps: error types.
 
-- [ ] `feat(core): coverage / risk / requirements enums`
+- [x] `feat(core): coverage / risk / requirements enums`
       Files: `crates/smoke-core/src/coverage.rs`.
       Adds: `Tier { T0, T1, T2, T3, T4 }`, `Strategy` bitflag
       (S1..S7), `Coverage { achieved_tier, by_strategy }`,
@@ -110,14 +110,14 @@ and the R&D spike for the memory scanner.
       Acceptance: unit tests for bitflag ops.
       Deps: identifier model.
 
-- [ ] `feat(core): SmokeModule trait`
+- [x] `feat(core): SmokeModule trait`
       Files: `crates/smoke-core/src/module.rs`.
       Adds: the trait from SPEC §6.2 plus `ApplyCtx`, `RotateCtx`,
       `ApplyReport`, `RotateReport`, `RevertReport`, `ModuleStatus`.
       Acceptance: trait compiles, doc examples.
       Deps: identifier, coverage.
 
-- [ ] `feat(core): vendor catalog seed`
+- [x] `feat(core): vendor catalog seed`
       Files: `crates/smoke-core/src/vendors.rs` + `data/vendors.toml`.
       Adds: curated OUI table (~50 entries), DMI vendor+board+BIOS
       presets, disk vendor+model presets. Powers the `consistent`
@@ -126,7 +126,7 @@ and the R&D spike for the memory scanner.
       set.
       Deps: identifier model.
 
-- [ ] `feat(core): randomization engine - common types`
+- [x] `feat(core): randomization engine - common types`
       Files: `crates/smoke-core/src/rng/mod.rs`.
       Adds: `Rng` (SeedableRng wrapper around ChaCha20Rng),
       `Profile` enum, `ValueOverride` enum (UseProfile, Fixed,
@@ -134,14 +134,14 @@ and the R&D spike for the memory scanner.
       Acceptance: reproducible output from fixed seed.
       Deps: vendors.
 
-- [ ] `feat(core): randomization engine - random profile`
+- [x] `feat(core): randomization engine - random profile`
       Files: `crates/smoke-core/src/rng/random.rs`.
       Adds: pure-random generation per identifier kind (MAC, UUID,
       DMI string, serial, hostname).
       Acceptance: unit tests for each kind (format checks, no panic).
       Deps: rng common.
 
-- [ ] `feat(core): randomization engine - consistent profile`
+- [x] `feat(core): randomization engine - consistent profile`
       Files: `crates/smoke-core/src/rng/consistent.rs`.
       Adds: pick a vendor, then derive coherent values across all
       identifier kinds.
@@ -149,19 +149,19 @@ and the R&D spike for the memory scanner.
       coherent profile every time.
       Deps: random profile.
 
-- [ ] `feat(core): randomization engine - locally-administered MAC`
+- [x] `feat(core): randomization engine - locally-administered MAC`
       Files: `crates/smoke-core/src/rng/lam.rs`.
       Adds: LAM-bit MAC generation; everything else returns Keep.
       Acceptance: test that bit 1 of first octet is set.
       Deps: rng common.
 
-- [ ] `feat(core): randomization engine - pinned profile`
+- [x] `feat(core): randomization engine - pinned profile`
       Files: `crates/smoke-core/src/rng/pinned.rs`.
       Adds: load identity from a TOML file.
       Acceptance: round-trip test (write then read).
       Deps: rng common.
 
-- [ ] `feat(core): config schema`
+- [x] `feat(core): config schema`
       Files: `crates/smoke-core/src/config/mod.rs`.
       Adds: `SmokeConfig { version, profile, modules: Map<ModuleId,
       ModuleConfig>, rotation: RotationConfig, log_scrub: … }`,
@@ -171,7 +171,7 @@ and the R&D spike for the memory scanner.
       config; validation errors tested.
       Deps: rng.
 
-- [ ] `feat(core): config load/save + default path resolution`
+- [x] `feat(core): config load/save + default path resolution`
       Files: `crates/smoke-core/src/config/io.rs`.
       Adds: load from `/etc/smoke/smoke.toml` or `--config` override;
       XDG fallback for unprivileged runs. Atomic save (write tmp +
@@ -179,7 +179,7 @@ and the R&D spike for the memory scanner.
       Acceptance: tests using tempdir.
       Deps: config schema.
 
-- [ ] `feat(core): state store schema`
+- [x] `feat(core): state store schema`
       Files: `crates/smoke-core/src/state/mod.rs`.
       Adds: `State { version, modules: Map<ModuleId, ModuleState> }`,
       `ModuleState { last_applied, last_rotated, rotation_count,
@@ -188,7 +188,7 @@ and the R&D spike for the memory scanner.
       to `1`.
       Deps: config.
 
-- [ ] `feat(core): state store load/save`
+- [x] `feat(core): state store load/save`
       Files: `crates/smoke-core/src/state/io.rs`.
       Adds: atomic load/save to `/var/lib/smoke/state.json`; version
       migration stub.
@@ -196,7 +196,7 @@ and the R&D spike for the memory scanner.
       tested.
       Deps: state schema.
 
-- [ ] `feat(core): backup store + integrity manifest`
+- [x] `feat(core): backup store + integrity manifest`
       Files: `crates/smoke-core/src/backup/mod.rs`,
       `crates/smoke-core/src/backup/manifest.rs`.
       Adds: write original value blobs to `/var/lib/smoke/backup/`,
@@ -205,21 +205,21 @@ and the R&D spike for the memory scanner.
       Acceptance: round-trip + tamper-detection tests.
       Deps: state.
 
-- [ ] `feat(core): module registry and dispatch`
+- [x] `feat(core): module registry and dispatch`
       Files: `crates/smoke-core/src/registry.rs`.
       Adds: `Registry` holding `Vec<Box<dyn SmokeModule>>`, with
       `by_id`, `by_category`, `iter_enabled(config)`.
       Acceptance: register a no-op test module, look it up.
       Deps: module trait, config.
 
-- [ ] `feat(core): executor (apply/rotate/revert driver)`
+- [x] `feat(core): executor (apply/rotate/revert driver)`
       Files: `crates/smoke-core/src/executor.rs`.
       Adds: drives a set of modules through their lifecycle, updates
       state, writes backups, produces aggregate reports.
       Acceptance: tests using a fake module that records calls.
       Deps: registry, state, backup.
 
-- [ ] `feat(cli): crate skeleton with clap`
+- [x] `feat(cli): crate skeleton with clap`
       Files: `crates/smoke-cli/Cargo.toml`, `src/main.rs`,
       `src/cli.rs`.
       Adds: `clap` parser matching SPEC §7. Subcommands are stubs
@@ -228,7 +228,7 @@ and the R&D spike for the memory scanner.
      --help` all work.
       Deps: core.
 
-- [ ] `feat(cli): logging and JSON output`
+- [x] `feat(cli): logging and JSON output`
       Files: `crates/smoke-cli/src/output.rs`.
       Adds: `--json` flag, `--verbose`, structured logging via
       `tracing` + `tracing-subscriber`. Human output via a thin
@@ -237,7 +237,7 @@ and the R&D spike for the memory scanner.
       stub output.
       Deps: cli skeleton.
 
-- [ ] `feat(cli): smoke list`
+- [x] `feat(cli): smoke list`
       Files: `crates/smoke-cli/src/cmd/list.rs`.
       Adds: list known identifier groups from registry; `--category`
       and `--status` filters.
@@ -262,21 +262,21 @@ and the R&D spike for the memory scanner.
       changes); test with canned dump.
       Deps: dump.
 
-- [ ] `feat(cli): smoke status`
+- [x] `feat(cli): smoke status`
       Files: `crates/smoke-cli/src/cmd/status.rs`.
       Adds: read state.json, summarize per-module coverage and
       last-applied.
       Acceptance: tests with seeded state file.
       Deps: state.
 
-- [ ] `feat(cli): smoke config show/validate`
+- [x] `feat(cli): smoke config show/validate`
       Files: `crates/smoke-cli/src/cmd/config.rs`.
       Adds: print or validate config; `validate` exits non-zero on
       schema errors with a helpful message.
       Acceptance: validation tests for good/bad configs.
       Deps: config io.
 
-- [ ] `feat(cli): smoke selftest`
+- [x] `feat(cli): smoke selftest`
       Files: `crates/smoke-cli/src/cmd/selftest.rs`.
       Adds: smoke-the-binary - verify state/backup dirs writable
       (when root), config parses, registry non-empty.
