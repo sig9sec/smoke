@@ -1,0 +1,171 @@
+[[oui]]
+prefix = "00:1A:2B"
+vendor = "Dell Inc."
+
+[[oui]]
+prefix = "00:1B:21"
+vendor = "Intel Corporation"
+
+[[oui]]
+prefix = "00:1C:42"
+vendor = "Parallels Software International Inc."
+
+[[oui]]
+prefix = "00:1D:D8"
+vendor = "Hewlett-Packard Company"
+
+[[oui]]
+prefix = "00:1E:4F"
+vendor = "ASUSTeK Computer Inc."
+
+[[oui]]
+prefix = "00:1F:3B"
+vendor = "Lenovo"
+
+[[oui]]
+prefix = "00:21:5A"
+vendor = "IBM"
+
+[[oui]]
+prefix = "00:22:48"
+vendor = "Realtek Semiconductor Corp."
+
+[[oui]]
+prefix = "00:23:24"
+vendor = "Apple, Inc."
+
+[[oui]]
+prefix = "00:24:D7"
+vendor = "Broadcom Corporation"
+
+[[oui]]
+prefix = "00:25:B5"
+vendor = "Super Micro Computer Inc."
+
+[[oui]]
+prefix = "00:26:18"
+vendor = "Gigabyte Technology Co., Ltd."
+
+[[oui]]
+prefix = "00:27:19"
+vendor = "Micro-Star International Co., Ltd."
+
+[[oui]]
+prefix = "00:28:F8"
+vendor = "Qualcomm Atheros"
+
+[[oui]]
+prefix = "00:2A:A0"
+vendor = "Cisco Systems, Inc."
+
+[[oui]]
+prefix = "00:2B:6E"
+vendor = "Acer Inc."
+
+[[oui]]
+prefix = "00:2C:54"
+vendor = "Juniper Networks"
+
+[[oui]]
+prefix = "00:2D:76"
+vendor = "TP-Link Technologies Co., Ltd."
+
+[[oui]]
+prefix = "00:50:56"
+vendor = "VMware, Inc."
+
+[[oui]]
+prefix = "08:00:27"
+vendor = "PCS Systemtechnik GmbH"
+
+[[oui]]
+prefix = "52:54:00"
+vendor = "QEMU"
+
+[[oui]]
+prefix = "0A:00:27"
+vendor = "PCS Systemtechnik GmbH"
+
+[[dmi]]
+sys_vendor = "Dell Inc."
+product_name = "OptiPlex 7090"
+version = ""
+board_vendor = "Dell Inc."
+board_name = "0M1KWW"
+bios_vendor = "Dell Inc."
+bios_version = "1.4.0"
+
+[[dmi]]
+sys_vendor = "Hewlett-Packard"
+product_name = "HP EliteDesk 800 G6"
+version = ""
+board_vendor = "Hewlett-Packard"
+board_name = "8737"
+bios_vendor = "HP"
+bios_version = "U21 Ver. 02.07.00"
+
+[[dmi]]
+sys_vendor = "Lenovo"
+product_name = "ThinkCentre M70q"
+version = "ThinkCentre M70q"
+board_vendor = "LENOVO"
+board_name = "3137"
+bios_vendor = "LENOVO"
+bios_version = "M2UKT38A"
+
+[[dmi]]
+sys_vendor = "ASUSTeK COMPUTER INC."
+product_name = "PRIME B550M-A"
+version = "Rev X.0x"
+board_vendor = "ASUSTeK COMPUTER INC."
+board_name = "PRIME B550M-A"
+bios_vendor = "American Megatrends Inc."
+bios_version = "2803"
+
+[[dmi]]
+sys_vendor = "Gigabyte Technology Co., Ltd."
+product_name = "B550 AORUS ELITE V2"
+version = "-CF"
+board_vendor = "Gigabyte Technology Co., Ltd."
+board_name = "B550 AORUS ELITE V2"
+bios_vendor = "American Megatrends Inc."
+bios_version = "F15"
+
+[[dmi]]
+sys_vendor = "Supermicro"
+product_name = "X12STH-F"
+version = "0123456789"
+board_vendor = "Supermicro"
+board_name = "X12STH-F"
+bios_vendor = "American Megatrends Inc."
+bios_version = "1.4"
+
+[[disk]]
+vendor = "Samsung"
+model = "SSD 870 EVO"
+family = "SATA SSD"
+
+[[disk]]
+vendor = "Crucial"
+model = "CT1000MX500SSD1"
+family = "MX500"
+
+[[disk]]
+vendor = "Western Digital"
+model = "WD10EZEX"
+family = "Blue"
+
+[[disk]]
+vendor = "Kingston"
+model = "SA400S37240G"
+family = "A400"
+
+[[disk]]
+vendor = "SK hynix"
+model = "BC711"
+family = "NVMe SSD"
+
+[[disk]]
+vendor = "Intel"
+model = "SSDPEKKW256G8"
+family = "660p"

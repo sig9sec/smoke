@@ -18,6 +18,7 @@ pub mod coverage;
 pub mod error;
 pub mod identifier;
 pub mod module;
+pub mod vendors;
 
 pub use coverage::{Coverage, Requirements, Risk, RiskLevel, Strategy, Tier};
 pub use error::{Result, SmokeError};
