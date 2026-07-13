@@ -20,6 +20,7 @@ pub mod error;
 pub mod identifier;
 pub mod module;
 pub mod rng;
+pub mod state;
 pub mod vendors;
 
 pub use coverage::{Coverage, Requirements, Risk, RiskLevel, Strategy, Tier};
