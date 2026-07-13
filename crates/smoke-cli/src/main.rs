@@ -19,6 +19,9 @@ mod output;
 
 use clap::Parser;
 use cli::{Cli, Commands, ConfigAction, ServiceAction};
+use smoke_core::config::{self, SmokeConfig};
+use smoke_core::registry::Registry;
+use smoke_core::state::{self, State};
 
 fn main() {
     let cli = Cli::parse();
@@ -63,6 +66,24 @@ fn main() {
     }
 }
 
+fn load_config() -> Result<SmokeConfig, Box<dyn std::error::Error>> {
+    let path = config::io::default_config_path();
+    if path.exists() {
+        Ok(config::io::load(&path)?)
+    } else {
+        Ok(SmokeConfig::default())
+    }
+}
+
+fn load_state() -> Result<State, Box<dyn std::error::Error>> {
+    let path = state::io::default_state_path();
+    if path.exists() {
+        Ok(state::io::load(&path)?)
+    } else {
+        Ok(State::default())
+    }
+}
+
 fn cmd_apply(
     _module: Vec<String>,
     _profile: Option<String>,
@@ -79,8 +100,53 @@ fn cmd_rotate(
     unimplemented!("smoke rotate")
 }
 
-fn cmd_status(_module: Option<String>, _json: bool) -> Result<(), Box<dyn std::error::Error>> {
-    unimplemented!("smoke status")
+fn cmd_status(module: Option<String>, json: bool) -> Result<(), Box<dyn std::error::Error>> {
+    let state = load_state()?;
+    let _config = load_config()?;
+
+    if json {
+        output::print_json(&state);
+        return Ok(());
+    }
+
+    if let Some(mod_name) = module {
+        if let Some(ms) = state.modules.get(&mod_name) {
+            println!("module: {mod_name}");
+            println!(
+                "  applied: {}",
+                ms.last_applied.as_deref().unwrap_or("never")
+            );
+            println!(
+                "  rotated: {}",
+                ms.last_rotated.as_deref().unwrap_or("never")
+            );
+            println!("  rotation count: {}", ms.rotation_count);
+            if !ms.current_values.is_empty() {
+                println!("  current values:");
+                for (k, v) in &ms.current_values {
+                    println!("    {k}: {v}");
+                }
+            }
+        } else {
+            println!("module '{mod_name}' has no recorded state");
+        }
+    } else {
+        let mut rows = Vec::new();
+        for (id, ms) in &state.modules {
+            rows.push(vec![
+                id.clone(),
+                ms.last_applied.as_deref().unwrap_or("never").to_string(),
+                ms.rotation_count.to_string(),
+            ]);
+        }
+        if rows.is_empty() {
+            println!("no modules have been applied yet");
+        } else {
+            output::print_table(&["module", "last applied", "rotations"], &rows);
+        }
+    }
+
+    Ok(())
 }
 
 fn cmd_doctor(_fix: bool) -> Result<(), Box<dyn std::error::Error>> {
@@ -107,7 +173,27 @@ fn cmd_list(
     _category: Option<String>,
     _status: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    unimplemented!("smoke list")
+    let config = load_config()?;
+    let registry = Registry::new();
+
+    let mut rows = Vec::new();
+    for module in registry.all() {
+        let mc = config.module(module.id());
+        rows.push(vec![
+            module.id().to_string(),
+            format!("{:?}", module.category()),
+            if mc.enabled { "enabled" } else { "disabled" }.to_string(),
+            module.coverage().achieved_tier.label().to_string(),
+        ]);
+    }
+
+    if rows.is_empty() {
+        println!("no modules registered");
+    } else {
+        output::print_table(&["id", "category", "status", "tier"], &rows);
+    }
+
+    Ok(())
 }
 
 fn cmd_dump(
@@ -131,11 +217,28 @@ fn cmd_config_edit() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn cmd_config_show() -> Result<(), Box<dyn std::error::Error>> {
-    unimplemented!("smoke config show")
+    let cfg = load_config()?;
+    let toml = toml::to_string_pretty(&cfg)?;
+    println!("{toml}");
+    Ok(())
 }
 
 fn cmd_config_validate() -> Result<(), Box<dyn std::error::Error>> {
-    unimplemented!("smoke config validate")
+    let path = config::io::default_config_path();
+    if !path.exists() {
+        eprintln!("no config file found at {}", path.display());
+        std::process::exit(1);
+    }
+    match config::io::load(&path) {
+        Ok(_) => {
+            println!("config is valid");
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("config validation failed: {e}");
+            std::process::exit(1);
+        }
+    }
 }
 
 fn cmd_service_install() -> Result<(), Box<dyn std::error::Error>> {
@@ -151,5 +254,35 @@ fn cmd_service_status() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn cmd_selftest() -> Result<(), Box<dyn std::error::Error>> {
-    unimplemented!("smoke selftest")
+    println!("smoke selftest");
+
+    let config_path = config::io::default_config_path();
+    if config_path.exists() {
+        match config::io::load(&config_path) {
+            Ok(_) => println!("  [ok] config parses"),
+            Err(e) => println!("  [FAIL] config: {e}"),
+        }
+    } else {
+        println!("  [skip] no config file");
+    }
+
+    let state_path = state::io::default_state_path();
+    if state_path.exists() {
+        match state::io::load(&state_path) {
+            Ok(_) => println!("  [ok] state parses"),
+            Err(e) => println!("  [FAIL] state: {e}"),
+        }
+    } else {
+        println!("  [skip] no state file");
+    }
+
+    let registry = Registry::new();
+    if registry.is_empty() {
+        println!("  [warn] no modules registered");
+    } else {
+        println!("  [ok] {} modules registered", registry.len());
+    }
+
+    println!("selftest complete");
+    Ok(())
 }
