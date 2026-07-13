@@ -17,7 +17,11 @@
 pub mod coverage;
 pub mod error;
 pub mod identifier;
+pub mod module;
 
 pub use coverage::{Coverage, Requirements, Risk, RiskLevel, Strategy, Tier};
 pub use error::{Result, SmokeError};
 pub use identifier::{Category, Finding, Findings, IdentifierId};
+pub use module::{
+    ApplyCtx, ApplyReport, Change, ModuleStatus, RevertReport, RotateCtx, RotateReport, SmokeModule,
+};
