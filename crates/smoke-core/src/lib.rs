@@ -20,6 +20,7 @@ pub mod coverage;
 pub mod error;
 pub mod identifier;
 pub mod module;
+pub mod registry;
 pub mod rng;
 pub mod state;
 pub mod vendors;
