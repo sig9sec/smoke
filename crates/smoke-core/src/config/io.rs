@@ -20,20 +20,30 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const SYSTEM_CONFIG_PATH: &str = "/etc/smoke/smoke.toml";
-const XDG_CONFIG_DIR: &str = ".config/smoke";
 
 pub fn default_config_path() -> PathBuf {
     if Path::new(SYSTEM_CONFIG_PATH).exists() {
-        PathBuf::from(SYSTEM_CONFIG_PATH)
-    } else if let Some(home) = dirs_home() {
-        home.join(XDG_CONFIG_DIR).join("smoke.toml")
-    } else {
-        PathBuf::from(SYSTEM_CONFIG_PATH)
+        return PathBuf::from(SYSTEM_CONFIG_PATH);
     }
+    if let Some(dir) = config_dir() {
+        return dir.join("smoke.toml");
+    }
+    PathBuf::from(SYSTEM_CONFIG_PATH)
 }
 
-fn dirs_home() -> Option<PathBuf> {
-    std::env::var_os("HOME").map(PathBuf::from)
+pub fn default_config_path_if_exists() -> Option<PathBuf> {
+    let path = default_config_path();
+    if path.exists() { Some(path) } else { None }
+}
+
+fn config_dir() -> Option<PathBuf> {
+    if let Some(xdg) = std::env::var_os("XDG_CONFIG_HOME") {
+        let p = PathBuf::from(xdg);
+        if p.is_absolute() {
+            return Some(p.join("smoke"));
+        }
+    }
+    std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config").join("smoke"))
 }
 
 pub fn load(path: &Path) -> Result<SmokeConfig> {

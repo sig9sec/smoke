@@ -23,6 +23,9 @@ use clap::{Parser, Subcommand};
     about = "Linux privacy / anti-fingerprinting suite"
 )]
 pub struct Cli {
+    #[arg(long, global = true)]
+    pub config: Option<String>,
+
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -79,7 +82,7 @@ pub enum Commands {
         #[arg(long)]
         out: Option<String>,
         #[arg(long)]
-        r#real: bool,
+        real: bool,
         #[arg(long)]
         spoofed: bool,
     },
