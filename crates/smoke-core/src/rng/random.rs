@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use rand::Rng;
+use super::ValueGenerator;
+use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
+use std::sync::Mutex;
 
 pub fn random_mac(rng: &mut ChaCha20Rng) -> String {
     let mut buf = [0u8; 6];
@@ -75,6 +77,36 @@ pub fn random_hostname(rng: &mut ChaCha20Rng) -> String {
     format!("{adj}-{noun}-{num}")
 }
 
+pub struct RandomProfile {
+    rng: Mutex<ChaCha20Rng>,
+}
+
+impl RandomProfile {
+    pub fn new(seed: u64) -> Self {
+        Self {
+            rng: Mutex::new(ChaCha20Rng::seed_from_u64(seed)),
+        }
+    }
+}
+
+impl ValueGenerator for RandomProfile {
+    fn mac(&self) -> String {
+        random_mac(&mut self.rng.lock().unwrap())
+    }
+
+    fn uuid(&self) -> String {
+        random_uuid_v4(&mut self.rng.lock().unwrap())
+    }
+
+    fn hostname(&self) -> String {
+        random_hostname(&mut self.rng.lock().unwrap())
+    }
+
+    fn serial(&self, len: usize) -> String {
+        random_serial(&mut self.rng.lock().unwrap(), len)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -92,14 +124,6 @@ mod tests {
         let first = u8::from_str_radix(&mac[..2], 16).unwrap();
         assert_eq!(first & 0x01, 0, "multicast bit must be clear");
         assert_eq!(first & 0x02, 0x02, "locally administered bit must be set");
-    }
-
-    #[test]
-    fn mac_locally_administered() {
-        let mut rng = test_rng();
-        let mac = random_mac(&mut rng);
-        let first_byte = u8::from_str_radix(&mac[..2], 16).unwrap();
-        assert_eq!(first_byte & 0x02, 0x02);
     }
 
     #[test]
@@ -133,5 +157,13 @@ mod tests {
         assert!(h.contains('-'));
         let parts: Vec<&str> = h.split('-').collect();
         assert_eq!(parts.len(), 3);
+    }
+
+    #[test]
+    fn profile_deterministic() {
+        let p1 = RandomProfile::new(42);
+        let p2 = RandomProfile::new(42);
+        assert_eq!(p1.mac(), p2.mac());
+        assert_eq!(p1.uuid(), p2.uuid());
     }
 }

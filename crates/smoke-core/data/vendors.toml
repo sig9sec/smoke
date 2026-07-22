@@ -1,74 +1,103 @@
+# smoke - Linux privacy / anti-fingerprinting suite
+# Copyright (C) 2026  Michele Federici (@ps1dr3x) <michele@federici.tech>
+#
+# Curated vendor catalog powering the consistent randomization profile.
+# The `vendor` field on OUI entries is matched against the `sys_vendor`
+# field on DMI presets to produce a coherent fake hardware identity.
+#
+# OUI prefixes are sourced from the IEEE OUI registry. Only well-known
+# assignments for major hardware vendors are included.
+
+# ---------------------------------------------------------------------------
+# OUI (Organizationally Unique Identifier) prefixes
+# ---------------------------------------------------------------------------
+# Each entry maps an IEEE-assigned OUI prefix to a vendor name.
+# The `vendor` field must match a DMI preset's `sys_vendor` for the
+# consistent profile to produce a coherent MAC+DMI combination.
+
 [[oui]]
-prefix = "00:1A:2B"
+prefix = "00:14:4F"
 vendor = "Dell Inc."
 
 [[oui]]
-prefix = "00:1B:21"
-vendor = "Intel Corporation"
+prefix = "F8:DB:88"
+vendor = "Dell Inc."
 
 [[oui]]
-prefix = "00:1C:42"
-vendor = "Parallels Software International Inc."
-
-[[oui]]
-prefix = "00:1D:D8"
-vendor = "Hewlett-Packard Company"
-
-[[oui]]
-prefix = "00:1E:4F"
-vendor = "ASUSTeK Computer Inc."
-
-[[oui]]
-prefix = "00:1F:3B"
+prefix = "00:1F:29"
 vendor = "Lenovo"
 
 [[oui]]
-prefix = "00:21:5A"
-vendor = "IBM"
-
-[[oui]]
-prefix = "00:22:48"
-vendor = "Realtek Semiconductor Corp."
+prefix = "54:EE:75"
+vendor = "Lenovo"
 
 [[oui]]
 prefix = "00:23:24"
 vendor = "Apple, Inc."
 
 [[oui]]
-prefix = "00:24:D7"
-vendor = "Broadcom Corporation"
+prefix = "F0:18:98"
+vendor = "Apple, Inc."
 
 [[oui]]
-prefix = "00:25:B5"
-vendor = "Super Micro Computer Inc."
+prefix = "3C:5A:B4"
+vendor = "Apple, Inc."
+
+[[oui]]
+prefix = "00:1F:3B"
+vendor = "Lenovo"
+
+[[oui]]
+prefix = "00:1E:0B"
+vendor = "Hewlett-Packard"
+
+[[oui]]
+prefix = "C4:34:66"
+vendor = "Hewlett-Packard"
+
+[[oui]]
+prefix = "00:1B:21"
+vendor = "Intel Corporation"
+
+[[oui]]
+prefix = "00:07:E9"
+vendor = "Intel Corporation"
+
+[[oui]]
+prefix = "00:25:9C"
+vendor = "ASUSTeK COMPUTER INC."
+
+[[oui]]
+prefix = "AC:22:0B"
+vendor = "ASUSTeK COMPUTER INC."
 
 [[oui]]
 prefix = "00:26:18"
 vendor = "Gigabyte Technology Co., Ltd."
 
 [[oui]]
-prefix = "00:27:19"
+prefix = "F4:6D:04"
+vendor = "Gigabyte Technology Co., Ltd."
+
+[[oui]]
+prefix = "00:25:90"
+vendor = "Supermicro"
+
+[[oui]]
+prefix = "AC:1F:6B"
+vendor = "Supermicro"
+
+[[oui]]
+prefix = "00:24:8C"
 vendor = "Micro-Star International Co., Ltd."
 
 [[oui]]
-prefix = "00:28:F8"
-vendor = "Qualcomm Atheros"
+prefix = "00:17:31"
+vendor = "Micro-Star International Co., Ltd."
 
 [[oui]]
-prefix = "00:2A:A0"
-vendor = "Cisco Systems, Inc."
-
-[[oui]]
-prefix = "00:2B:6E"
-vendor = "Acer Inc."
-
-[[oui]]
-prefix = "00:2C:54"
-vendor = "Juniper Networks"
-
-[[oui]]
-prefix = "00:2D:76"
-vendor = "TP-Link Technologies Co., Ltd."
+prefix = "00:1C:42"
+vendor = "Parallels Software International Inc."
 
 [[oui]]
 prefix = "00:50:56"
@@ -83,8 +112,116 @@ prefix = "52:54:00"
 vendor = "QEMU"
 
 [[oui]]
+prefix = "00:15:5D"
+vendor = "Microsoft Corporation"
+
+[[oui]]
+prefix = "00:03:FF"
+vendor = "Microsoft Corporation"
+
+[[oui]]
+prefix = "00:0C:29"
+vendor = "VMware, Inc."
+
+[[oui]]
+prefix = "B8:CA:3A"
+vendor = "Dell Inc."
+
+[[oui]]
+prefix = "10:C1:72"
+vendor = "Hewlett-Packard"
+
+[[oui]]
+prefix = "20:CF:30"
+vendor = "Dell Inc."
+
+[[oui]]
+prefix = "D4:AE:52"
+vendor = "Dell Inc."
+
+[[oui]]
+prefix = "EC:D6:8A"
+vendor = "ASUSTeK COMPUTER INC."
+
+[[oui]]
+prefix = "04:D9:F5"
+vendor = "ASUSTeK COMPUTER INC."
+
+[[oui]]
+prefix = "00:13:72"
+vendor = "Dell Inc."
+
+[[oui]]
+prefix = "00:14:22"
+vendor = "Dell Inc."
+
+[[oui]]
+prefix = "74:E6:E2"
+vendor = "Lenovo"
+
+[[oui]]
+prefix = "20:1C:7F"
+vendor = "Lenovo"
+
+[[oui]]
+prefix = "00:08:02"
+vendor = "Hewlett-Packard"
+
+[[oui]]
+prefix = "78:E7:D1"
+vendor = "Apple, Inc."
+
+[[oui]]
+prefix = "7C:C3:A1"
+vendor = "Apple, Inc."
+
+[[oui]]
+prefix = "90:9C:4A"
+vendor = "Hewlett-Packard"
+
+[[oui]]
+prefix = "A0:48:1C"
+vendor = "Lenovo"
+
+[[oui]]
+prefix = "B0:83:FE"
+vendor = "Dell Inc."
+
+[[oui]]
+prefix = "00:19:99"
+vendor = "Gigabyte Technology Co., Ltd."
+
+[[oui]]
+prefix = "04:69:F8"
+vendor = "ASUSTeK COMPUTER INC."
+
+[[oui]]
+prefix = "2C:FD:87"
+vendor = "Supermicro"
+
+[[oui]]
+prefix = "0C:C4:7A"
+vendor = "Supermicro"
+
+[[oui]]
+prefix = "C8:1F:66"
+vendor = "Micro-Star International Co., Ltd."
+
+[[oui]]
+prefix = "04:7C:5F"
+vendor = "VMware, Inc."
+
+[[oui]]
+prefix = "00:05:69"
+vendor = "VMware, Inc."
+
+[[oui]]
 prefix = "0A:00:27"
 vendor = "PCS Systemtechnik GmbH"
+
+# ---------------------------------------------------------------------------
+# DMI presets - one per real machine model
+# ---------------------------------------------------------------------------
 
 [[dmi]]
 sys_vendor = "Dell Inc."
@@ -114,6 +251,15 @@ bios_vendor = "LENOVO"
 bios_version = "M2UKT38A"
 
 [[dmi]]
+sys_vendor = "Lenovo"
+product_name = "ThinkPad X1 Carbon Gen 11"
+version = "ThinkPad X1 Carbon Gen 11"
+board_vendor = "LENOVO"
+board_name = "21HMA0L1CD"
+bios_vendor = "LENOVO"
+bios_version = "N42ET62W"
+
+[[dmi]]
 sys_vendor = "ASUSTeK COMPUTER INC."
 product_name = "PRIME B550M-A"
 version = "Rev X.0x"
@@ -140,10 +286,74 @@ board_name = "X12STH-F"
 bios_vendor = "American Megatrends Inc."
 bios_version = "1.4"
 
+[[dmi]]
+sys_vendor = "Dell Inc."
+product_name = "Precision 5560"
+version = ""
+board_vendor = "Dell Inc."
+board_name = "07Y85F"
+bios_vendor = "Dell Inc."
+bios_version = "1.16.0"
+
+[[dmi]]
+sys_vendor = "Hewlett-Packard"
+product_name = "HP ProBook 450 G10"
+version = ""
+board_vendor = "Hewlett-Packard"
+board_name = "896E"
+bios_vendor = "HP"
+bios_version = "V92 Ver. 01.05.00"
+
+[[dmi]]
+sys_vendor = "Micro-Star International Co., Ltd."
+product_name = "MS-7D75"
+version = "1.0"
+board_vendor = "Micro-Star International Co., Ltd."
+board_name = "PRO Z690-A WIFI (MS-7D75)"
+bios_vendor = "American Megatrends Inc."
+bios_version = "1.50"
+
+[[dmi]]
+sys_vendor = "Apple, Inc."
+product_name = "MacBookPro16,1"
+version = "1.0"
+board_vendor = "Apple, Inc."
+board_name = "Mac-A55F5C6CC6B79A4"
+bios_vendor = "Apple, Inc."
+bios_version = "2051.0.0.0.0"
+
+[[dmi]]
+sys_vendor = "QEMU"
+product_name = "Standard PC (Q35 + ICH9, 2009)"
+version = "pc-q35-8.2"
+board_vendor = "Oracle Corporation"
+board_name = "Oracle VM VirtualBox"
+bios_vendor = "SeaBIOS"
+bios_version = "rel-1.16.0-0-gd239552ce7"
+
+[[dmi]]
+sys_vendor = "VMware, Inc."
+product_name = "VMware Virtual Platform"
+version = "None"
+board_vendor = "Intel Corporation"
+board_name = "440BX Desktop Reference Platform"
+bios_vendor = "Phoenix Technologies LTD"
+bios_version = "6.00"
+
+# ---------------------------------------------------------------------------
+# Disk presets - vendor + model combos from real hardware
+# ---------------------------------------------------------------------------
+# Disks are independent of system vendor: any disk can ship in any machine.
+
 [[disk]]
 vendor = "Samsung"
 model = "SSD 870 EVO"
 family = "SATA SSD"
+
+[[disk]]
+vendor = "Samsung"
+model = "SSD 980 PRO"
+family = "NVMe SSD"
 
 [[disk]]
 vendor = "Crucial"
@@ -156,16 +366,41 @@ model = "WD10EZEX"
 family = "Blue"
 
 [[disk]]
+vendor = "Western Digital"
+model = "WDS100T3X0C"
+family = "SN750"
+
+[[disk]]
 vendor = "Kingston"
 model = "SA400S37240G"
 family = "A400"
 
 [[disk]]
 vendor = "SK hynix"
-model = "BC711"
+model = "BC711 HFM512GD3JX013N"
 family = "NVMe SSD"
 
 [[disk]]
 vendor = "Intel"
 model = "SSDPEKKW256G8"
 family = "660p"
+
+[[disk]]
+vendor = "Seagate"
+model = "ST1000DM010"
+family = "Barracuda"
+
+[[disk]]
+vendor = "Toshiba"
+model = "HDWD110"
+family = "P300"
+
+[[disk]]
+vendor = "Micron"
+model = "2300 NVMe SSD"
+family = "2300"
+
+[[disk]]
+vendor = "Kioxia"
+model = "EXCERIA PLUS G3"
+family = "NVMe SSD"

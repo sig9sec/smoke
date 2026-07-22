@@ -32,3 +32,4 @@ pub use identifier::{Category, Finding, Findings, IdentifierId};
 pub use module::{
     ApplyCtx, ApplyReport, Change, ModuleStatus, RevertReport, RotateCtx, RotateReport, SmokeModule,
 };
+pub use rng::{Profile, ValueGenerator, ValueOverride};
