@@ -13,4 +13,5 @@ clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 smoke-core = { path = "../smoke-core" }
+smoke-scan = { path = "../smoke-scan" }
 toml = "0.8"

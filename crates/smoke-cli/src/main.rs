@@ -60,6 +60,18 @@ fn main() {
             ServiceAction::Status => cmd_service_status(),
         },
         Commands::Selftest => cmd_selftest(&config_path),
+        Commands::Scan {
+            pattern,
+            yara,
+            pid,
+            all,
+        } => cmd_scan(pattern, yara, pid, all),
+        Commands::Watch {
+            pattern,
+            yara,
+            pid,
+            poll,
+        } => cmd_watch(pattern, yara, pid, poll),
     };
 
     if let Err(e) = result {
@@ -321,4 +333,152 @@ fn cmd_selftest(config_path: &Option<PathBuf>) -> Result<(), Box<dyn std::error:
 
     println!("selftest complete");
     Ok(())
+}
+
+fn cmd_scan(
+    pattern: Option<String>,
+    yara: Option<String>,
+    pid: Option<u32>,
+    all: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let rule_source = match (&pattern, &yara) {
+        (_, Some(file)) => std::fs::read_to_string(file)?,
+        (Some(p), _) => format!(
+            r#"rule smoke_scan {{
+    strings:
+        $s = "{p}"
+    condition:
+        $s
+}}"#
+        ),
+        (None, None) => {
+            eprintln!("error: provide --yara FILE or a pattern argument");
+            std::process::exit(2);
+        }
+    };
+
+    let scanner = smoke_scan::yara_probe::compile_rule(&rule_source)
+        .map_err(|e| format!("YARA compile error: {e}"))?;
+
+    let self_pid = std::process::id();
+    let pids: Vec<u32> = if all {
+        smoke_scan::walker::list_pids()?
+    } else if let Some(p) = pid {
+        vec![p]
+    } else {
+        vec![self_pid]
+    };
+
+    let mut total_hits = 0;
+    for pid in &pids {
+        match smoke_scan::walker::parse_maps(*pid) {
+            Ok(regions) => {
+                for region in &regions {
+                    if !region.permissions.contains('r') {
+                        continue;
+                    }
+                    let size = (region.end - region.start) as usize;
+                    if size == 0 || size > 256 * 1024 * 1024 {
+                        continue;
+                    }
+                    let mut buf = vec![0u8; size];
+                    if let Ok(n) =
+                        smoke_scan::walker::read_remote_slice(*pid, region.start, &mut buf)
+                    {
+                        let hits = smoke_scan::yara_probe::scan_bytes(&scanner, &buf[..n]);
+                        if !hits.is_empty() {
+                            for rule_name in &hits {
+                                println!(
+                                    "pid {pid}: rule '{rule_name}' matched at {:#x} ({})",
+                                    region.start,
+                                    region.pathname.as_deref().unwrap_or("?")
+                                );
+                                total_hits += 1;
+                            }
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("warn: cannot read maps for pid {pid}: {e}");
+            }
+        }
+    }
+
+    println!("scan complete: {total_hits} hit(s)");
+    Ok(())
+}
+
+fn cmd_watch(
+    pattern: Option<String>,
+    yara: Option<String>,
+    pid: Option<u32>,
+    poll: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let rule_source = match (&pattern, &yara) {
+        (_, Some(file)) => std::fs::read_to_string(file)?,
+        (Some(p), _) => format!(
+            r#"rule smoke_watch {{
+    strings:
+        $s = "{p}"
+    condition:
+        $s
+}}"#
+        ),
+        (None, None) => {
+            eprintln!("error: provide --yara FILE or a pattern argument");
+            std::process::exit(2);
+        }
+    };
+
+    let scanner = smoke_scan::yara_probe::compile_rule(&rule_source)
+        .map_err(|e| format!("YARA compile error: {e}"))?;
+    let target_pid = pid.unwrap_or_else(std::process::id);
+    let interval = std::time::Duration::from_secs(poll);
+
+    println!("watching pid {target_pid} every {}s (Ctrl-C to stop)", poll);
+
+    loop {
+        let mut found = false;
+        if let Ok(regions) = smoke_scan::walker::parse_maps(target_pid) {
+            for region in &regions {
+                if !region.permissions.contains('r') {
+                    continue;
+                }
+                let size = (region.end - region.start) as usize;
+                if size == 0 || size > 256 * 1024 * 1024 {
+                    continue;
+                }
+                let mut buf = vec![0u8; size];
+                if let Ok(n) =
+                    smoke_scan::walker::read_remote_slice(target_pid, region.start, &mut buf)
+                {
+                    let hits = smoke_scan::yara_probe::scan_bytes(&scanner, &buf[..n]);
+                    if !hits.is_empty() {
+                        let ts = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs();
+                        for rule_name in &hits {
+                            println!(
+                                "[{ts}] pid {target_pid}: rule '{rule_name}' matched at {:#x}",
+                                region.start
+                            );
+                            found = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        if !found {
+            let ts = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            println!("[{ts}] no hits");
+        }
+
+        std::thread::sleep(interval);
+    }
 }

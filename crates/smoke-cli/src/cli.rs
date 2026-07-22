@@ -97,6 +97,24 @@ pub enum Commands {
         action: ServiceAction,
     },
     Selftest,
+    Scan {
+        pattern: Option<String>,
+        #[arg(long)]
+        yara: Option<String>,
+        #[arg(long)]
+        pid: Option<u32>,
+        #[arg(long)]
+        all: bool,
+    },
+    Watch {
+        pattern: Option<String>,
+        #[arg(long)]
+        yara: Option<String>,
+        #[arg(long)]
+        pid: Option<u32>,
+        #[arg(long, default_value = "5")]
+        poll: u64,
+    },
 }
 
 #[derive(Subcommand)]
