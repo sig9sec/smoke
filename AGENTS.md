@@ -64,7 +64,7 @@ tests/              # cross-crate integration tests
 
 ## Branch policy
 
-Default branch is `main`. Feature work happens on
+Default branch is `master`. Feature work happens on
 `<type>/<short-slug>` branches (e.g. `feat/mod-machine-id`). Keep
 branches short-lived.
 

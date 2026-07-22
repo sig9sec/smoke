@@ -27,7 +27,7 @@ how-and-when.
 5. **Commit message convention:** Conventional Commits, short subject
    line, no body unless genuinely needed. Scope is the area
    (`core`, `cli`, `mod-machine-id`, `mod-mac`, `mod-fsuuid`, …).
-6. **Branch per feature:** `<type>/<short-slug>` off `main`.
+6. **Branch per feature:** `<type>/<short-slug>` off `master`.
 7. **Update this file** when reality diverges from the plan. Mark done
    commits with `[x]`, add new ones, raise open questions at the bottom
    of the relevant phase.
@@ -74,7 +74,7 @@ and the R&D spike for the memory scanner.
 - [x] `ci: add github actions workflow`
       Files: `.github/workflows/ci.yml`.
       Acceptance: workflow runs fmt + clippy + test on Arch container
-      and Debian container for every PR and push to `main`.
+      and Debian container for every PR and push to `master`.
       Deps: previous.
 
 - [x] `feat(core): crate skeleton with GPL headers`
