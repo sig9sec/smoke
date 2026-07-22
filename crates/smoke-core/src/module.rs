@@ -16,9 +16,13 @@
 
 use crate::Result;
 use crate::coverage::{Coverage, Requirements, Risk};
-use crate::identifier::Findings;
+use crate::identifier::{Findings, IdentifierId};
+use crate::rng::{Profile, ValueGenerator, ValueOverride};
 use std::collections::HashMap;
 
+/// Every identifier group implements this trait.
+///
+/// See SPEC section 6.2 for the full contract.
 pub trait SmokeModule: Send + Sync {
     fn id(&self) -> &'static str;
     fn name(&self) -> &'static str;
@@ -33,17 +37,22 @@ pub trait SmokeModule: Send + Sync {
     fn risks(&self) -> Risk;
 }
 
-#[derive(Debug, Clone)]
+/// Context passed to `SmokeModule::apply`.
 pub struct ApplyCtx {
     pub dry_run: bool,
     pub force: bool,
-    pub profile_overrides: HashMap<String, String>,
+    pub profile: Profile,
+    pub overrides: HashMap<IdentifierId, ValueOverride>,
+    pub generator: Box<dyn ValueGenerator>,
 }
 
-#[derive(Debug, Clone)]
+/// Context passed to `SmokeModule::rotate`.
 pub struct RotateCtx {
     pub dry_run: bool,
     pub period: Option<String>,
+    pub profile: Profile,
+    pub overrides: HashMap<IdentifierId, ValueOverride>,
+    pub generator: Box<dyn ValueGenerator>,
 }
 
 #[derive(Debug, Clone, Default)]
