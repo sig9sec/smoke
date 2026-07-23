@@ -2,8 +2,14 @@
 name = "smoke-scan"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Memory scanner for the smoke privacy suite"
+keywords = ["privacy", "scanner", "memory", "yara"]
+categories = ["os"]
 
 [dependencies]
-boreal = "1"
-libc = "0.2"
+boreal.workspace = true
+libc.workspace = true

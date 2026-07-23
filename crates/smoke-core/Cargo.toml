@@ -2,17 +2,23 @@
 name = "smoke-core"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Core types, config, state, and module trait for the smoke privacy suite"
+keywords = ["privacy", "fingerprinting", "anti-fingerprinting", "linux"]
+categories = ["os"]
 
 [dependencies]
-libc = "0.2"
-rand = "0.9"
-rand_chacha = "0.9"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-sha2 = "0.10"
-thiserror = "2"
-toml = "0.8"
+libc.workspace = true
+rand.workspace = true
+rand_chacha.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+toml.workspace = true
 
 [dev-dependencies]
-tempfile = "3"
+tempfile.workspace = true

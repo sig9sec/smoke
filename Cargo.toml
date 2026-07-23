@@ -5,4 +5,22 @@ members = ["crates/smoke-core", "crates/smoke-cli", "crates/smoke-scan"]
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.85"
 license = "GPL-3.0-only"
+repository = "https://github.com/sig9sec/smoke"
+homepage = "https://github.com/sig9sec/smoke"
+
+[workspace.dependencies]
+smoke-core = { path = "crates/smoke-core" }
+smoke-scan = { path = "crates/smoke-scan" }
+boreal = "1"
+clap = { version = "4", features = ["derive"] }
+libc = "0.2"
+rand = "0.9"
+rand_chacha = "0.9"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tempfile = "3"
+thiserror = "2"
+toml = "0.8"
