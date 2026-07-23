@@ -763,6 +763,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "smoke-modules"
+version = "0.1.0"
+dependencies = [
+ "smoke-core",
+ "tempfile",
+]
+
+[[package]]
 name = "smoke-scan"
 version = "0.1.0"
 dependencies = [

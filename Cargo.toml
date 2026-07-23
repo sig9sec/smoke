@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/smoke-core", "crates/smoke-cli", "crates/smoke-scan"]
+members = ["crates/smoke-core", "crates/smoke-cli", "crates/smoke-scan", "crates/smoke-modules"]
 
 [workspace.package]
 version = "0.1.0"
@@ -12,6 +12,7 @@ homepage = "https://github.com/sig9sec/smoke"
 
 [workspace.dependencies]
 smoke-core = { path = "crates/smoke-core" }
+smoke-modules = { path = "crates/smoke-modules" }
 smoke-scan = { path = "crates/smoke-scan" }
 boreal = "1"
 clap = { version = "4", features = ["derive"] }

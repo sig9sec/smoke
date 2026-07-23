@@ -1,0 +1,17 @@
+[package]
+name = "smoke-modules"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Identifier modules for the smoke privacy suite"
+keywords = ["privacy", "fingerprinting", "anti-fingerprinting", "linux"]
+categories = ["os"]
+
+[dependencies]
+smoke-core.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
