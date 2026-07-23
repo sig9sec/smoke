@@ -414,44 +414,13 @@ and CI-tested end-to-end on Arch and Debian.
 
 ### P1.A - machine-id module
 
-- [ ] `feat(mod-machine-id): crate + enumerate`
-      Files: `crates/smoke-modules/mod-machine-id/`.
-      Adds: enumerate `/etc/machine-id`, `/var/lib/dbus/machine-id`,
-      `/var/lib/systemd/random-seed`, `/etc/hostid`, plus
-      `/var/lib/*/machine-id` glob. Doc example.
-      Acceptance: enumerate returns Findings on dev box.
-      Deps: P0 core + executor.
+All done.
 
-- [ ] `feat(mod-machine-id): apply + revert with backup`
-      Files: same crate, `apply.rs`.
-      Adds: write new value (default profile-consistent UUIDv4);
-      backup original; revert restores from backup. Atomic per file.
-      Acceptance: round-trip test in tempdir.
-      Deps: enumerate.
-
-- [ ] `feat(mod-machine-id): rotation`
-      Files: same crate, `rotate.rs`.
-      Adds: produce new value, call apply.
-      Acceptance: rotation counter increments in state.
-      Deps: apply.
-
-- [ ] `feat(mod-machine-id): register and doctor coverage`
-      Files: same crate, `lib.rs`, registry registration in
-      `smoke-cli`.
-      Adds: module wired into `smoke list`/`status`/`apply`. Doctor
-      coverage report notes "covered: file readers; uncovered: none
-      in 0.1 scope".
-      Acceptance: `smoke apply --module machine-id --dry-run` lists
-      changes.
-      Deps: rotate.
-
-- [ ] `test(mod-machine-id): root-integration test`
-      Files: `tests/root/machine_id.rs` (gated by `root-integration`
-      feature).
-      Adds: real apply/revert on `/etc/machine-id` in a container.
-      Acceptance: passes when run with `cargo test --features
-      root-integration` as root.
-      Deps: previous.
+- [x] `feat(mod-machine-id): crate + enumerate`
+- [x] `feat(mod-machine-id): apply + revert with backup`
+- [x] `feat(mod-machine-id): rotation`
+- [x] `feat(mod-machine-id): register and doctor coverage`
+- [x] `test(mod-machine-id): root-integration test`
 
 ### P1.B - hostname module
 
