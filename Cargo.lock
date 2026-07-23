@@ -767,6 +767,7 @@ dependencies = [
 name = "smoke-modules"
 version = "0.1.0"
 dependencies = [
+ "libc",
  "smoke-core",
  "tempfile",
 ]

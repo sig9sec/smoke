@@ -15,3 +15,7 @@ smoke-core.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+libc.workspace = true
+
+[features]
+root-integration = []
