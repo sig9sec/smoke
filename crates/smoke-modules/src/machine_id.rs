@@ -152,10 +152,15 @@ fn resolve_value(
     }
 }
 
-fn apply_at(base: &Path, ctx: &ApplyCtx) -> Result<ApplyReport> {
+fn write_files(
+    base: &Path,
+    dry_run: bool,
+    overrides: &std::collections::HashMap<IdentifierId, ValueOverride>,
+    generator: &dyn smoke_core::ValueGenerator,
+) -> Result<ApplyReport> {
     let mut report = ApplyReport::default();
 
-    let new_mid = resolve_value("system-machine-id", &ctx.overrides, &*ctx.generator);
+    let new_mid = resolve_value("system-machine-id", overrides, generator);
 
     for (id, rel) in PATHS {
         let path = base.join(rel.trim_start_matches('/'));
@@ -164,7 +169,7 @@ fn apply_at(base: &Path, ctx: &ApplyCtx) -> Result<ApplyReport> {
         }
 
         if *id == "random-seed" {
-            if ctx.dry_run {
+            if dry_run {
                 report
                     .warnings
                     .push(format!("would overwrite {} (binary seed)", path.display()));
@@ -199,7 +204,7 @@ fn apply_at(base: &Path, ctx: &ApplyCtx) -> Result<ApplyReport> {
             continue;
         }
 
-        if ctx.dry_run {
+        if dry_run {
             report.changed.push(Change {
                 identifier: id.to_string(),
                 old_value: old,
@@ -216,7 +221,7 @@ fn apply_at(base: &Path, ctx: &ApplyCtx) -> Result<ApplyReport> {
         });
     }
 
-    if !ctx.dry_run {
+    if !dry_run {
         let glob_base = base.join(GLOB_PARENT.trim_start_matches('/'));
         if let Ok(entries) = std::fs::read_dir(&glob_base) {
             for entry in entries.flatten() {
@@ -242,6 +247,18 @@ fn apply_at(base: &Path, ctx: &ApplyCtx) -> Result<ApplyReport> {
     }
 
     Ok(report)
+}
+
+fn apply_at(base: &Path, ctx: &ApplyCtx) -> Result<ApplyReport> {
+    write_files(base, ctx.dry_run, &ctx.overrides, &*ctx.generator)
+}
+
+fn rotate_at(base: &Path, ctx: &RotateCtx) -> Result<RotateReport> {
+    let report = write_files(base, ctx.dry_run, &ctx.overrides, &*ctx.generator)?;
+    Ok(RotateReport {
+        rotated: report.changed.into_iter().map(|c| c.identifier).collect(),
+        warnings: report.warnings,
+    })
 }
 
 fn revert_at(base: &Path, ctx: &RevertCtx) -> Result<RevertReport> {
@@ -306,8 +323,8 @@ impl SmokeModule for MachineIdModule {
         apply_at(Path::new("/"), ctx)
     }
 
-    fn rotate(&self, _ctx: &RotateCtx) -> Result<RotateReport> {
-        unimplemented!("smoke mod-machine-id rotate")
+    fn rotate(&self, ctx: &RotateCtx) -> Result<RotateReport> {
+        rotate_at(Path::new("/"), ctx)
     }
 
     fn status(&self) -> Result<ModuleStatus> {
@@ -576,5 +593,43 @@ mod tests {
             .find(|c| c.identifier == "system-machine-id")
             .unwrap();
         assert_eq!(change.new_value, "deadbeefdeadbeefdeadbeefdeadbeef");
+    }
+
+    #[test]
+    fn rotate_produces_new_value() {
+        let dir = setup_tempdir();
+
+        let first_val = {
+            let ctx = RotateCtx {
+                dry_run: false,
+                period: None,
+                profile: smoke_core::Profile::Random,
+                overrides: Default::default(),
+                generator: smoke_core::rng::create_generator(smoke_core::Profile::Random, 1),
+            };
+            let report = rotate_at(dir.path(), &ctx).unwrap();
+            assert!(!report.rotated.is_empty());
+            fs::read_to_string(dir.path().join("etc/machine-id"))
+                .unwrap()
+                .trim()
+                .to_string()
+        };
+
+        let second_val = {
+            let ctx = RotateCtx {
+                dry_run: false,
+                period: None,
+                profile: smoke_core::Profile::Random,
+                overrides: Default::default(),
+                generator: smoke_core::rng::create_generator(smoke_core::Profile::Random, 2),
+            };
+            rotate_at(dir.path(), &ctx).unwrap();
+            fs::read_to_string(dir.path().join("etc/machine-id"))
+                .unwrap()
+                .trim()
+                .to_string()
+        };
+
+        assert_ne!(first_val, second_val);
     }
 }
