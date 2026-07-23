@@ -4,10 +4,16 @@
 
 ```
 crates/
-  smoke-core/       # shared types, config, state, module trait
-  smoke-cli/        # the `smoke` binary (clap)
-  smoke-scan/       # memory scanner (R&D / Phase 0)
+  smoke-core/       # shared types, config, state, module trait, RNG
+  smoke-cli/        # the `smoke` binary (clap, all commands)
+  smoke-scan/       # memory scanner (process_vm_readv + boreal YARA)
+  smoke-modules/    # one crate per identifier group (Phase 1+)
+  smoke-kmod/       # kernel module (Phase 3, C)
+  smoke-bpf/        # eBPF programs (Phase 3, libbpf-rs)
+  smoke-preload/    # LD_PRELOAD shim (Phase 3)
+dist/               # systemd, udev, networkd, modprobe.d artifacts
 docs/               # specs and plans
+tests/              # cross-crate integration tests
 ```
 
 ## Prerequisites
@@ -43,9 +49,12 @@ cargo clippy --all-targets -- -D warnings  # lint (CI gate)
 
 1. Create `crates/smoke-modules/mod-<name>/`.
 2. Implement `SmokeModule` trait from `smoke-core`.
-3. Register in `smoke-cli`'s main.
+3. Register in `smoke-cli`'s `main.rs` (add to `Registry::new()`).
 4. Add at least one unit test that runs without root.
 5. Add a doc comment with an example.
+
+Note: `smoke-modules/` does not exist yet. It will be created in
+Phase 1 when the first module (`mod-machine-id`) lands.
 
 ## Commit conventions
 

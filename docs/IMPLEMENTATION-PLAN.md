@@ -103,11 +103,14 @@ and the R&D spike for the memory scanner.
 
 - [x] `feat(core): coverage / risk / requirements enums`
       Files: `crates/smoke-core/src/coverage.rs`.
-      Adds: `Tier { T0, T1, T2, T3, T4 }`, `Strategy` bitflag
-      (S1..S7), `Coverage { achieved_tier, by_strategy }`,
+      Adds: `Tier` enum (`None`, `PartialUserspace`, `PartialUdev`,
+      `FullKernel`, `FullBoot` with `label()` returning "T0".."T4"),
+      `Strategy` enum (`FileOverwrite`, `BindMount`, `UdevRule`,
+      `KernelBpf`, `Disable`, `PeriodicRotation`, `BootPatch` stored
+      as `Vec<Strategy>`), `Coverage { achieved_tier, strategies }`,
       `Risk { level, summary, mitigations }`, `Requirements
       { root, kmod, bpf, reboot, degraded_mode }`.
-      Acceptance: unit tests for bitflag ops.
+      Acceptance: unit tests for tier ordering + requirements default.
       Deps: identifier model.
 
 - [x] `feat(core): SmokeModule trait`
@@ -128,9 +131,9 @@ and the R&D spike for the memory scanner.
 
 - [x] `feat(core): randomization engine - common types`
       Files: `crates/smoke-core/src/rng/mod.rs`.
-      Adds: `Rng` (SeedableRng wrapper around ChaCha20Rng),
-      `Profile` enum, `ValueOverride` enum (UseProfile, Fixed,
-      Random, Keep).
+      Adds: `Profile` enum, `ValueOverride` enum (UseProfile, Fixed,
+      Random, Keep), `ValueGenerator` trait, `create_generator()`
+      factory. Profiles use `ChaCha20Rng` directly via `Mutex`.
       Acceptance: reproducible output from fixed seed.
       Deps: vendors.
 
@@ -222,31 +225,51 @@ and the R&D spike for the memory scanner.
 - [x] `feat(cli): crate skeleton with clap`
       Files: `crates/smoke-cli/Cargo.toml`, `src/main.rs`,
       `src/cli.rs`.
-      Adds: `clap` parser matching SPEC §7. Subcommands are stubs
-      returning `unimplemented!()` except `--version`.
+      Adds: `clap` parser matching SPEC section 7. Subcommands are
+      stubs returning `unimplemented!()` except `--version`. Global
+      `--config` flag for config path override.
       Acceptance: `smoke --version`, `smoke --help`, `smoke list
-     --help` all work.
+      --help` all work.
       Deps: core.
 
-- [x] `feat(cli): logging and JSON output`
+- [x] `feat(cli): JSON output`
       Files: `crates/smoke-cli/src/output.rs`.
-      Adds: `--json` flag, `--verbose`, structured logging via
-      `tracing` + `tracing-subscriber`. Human output via a thin
-      `Display` impl layer.
-      Acceptance: `smoke --json status` returns valid JSON even for
-      stub output.
+      Adds: `--json` flag on `Status`, table printer, JSON printer.
+      `--verbose` / `tracing` not yet wired (deferred to Phase 1
+      when real modules produce diagnostic output).
+      Acceptance: `smoke status --json` returns valid JSON.
       Deps: cli skeleton.
 
 - [x] `feat(cli): smoke list`
-      Files: `crates/smoke-cli/src/cmd/list.rs`.
+      Files: `crates/smoke-cli/src/main.rs` (`cmd_list`).
       Adds: list known identifier groups from registry; `--category`
-      and `--status` filters.
-      Acceptance: output matches registry contents; tests with fake
-      modules.
+      and `--status` filters implemented and tested.
+      Acceptance: filters work, output matches registry contents.
       Deps: registry, output.
 
+- [x] `feat(cli): smoke status`
+      Files: `crates/smoke-cli/src/main.rs` (`cmd_status`).
+      Adds: read state.json, summarize per-module coverage and
+      last-applied. `--json` respects `--module` filter.
+      Acceptance: works on dev box.
+      Deps: state.
+
+- [x] `feat(cli): smoke config show/validate`
+      Files: `crates/smoke-cli/src/main.rs` (`cmd_config_show`,
+      `cmd_config_validate`).
+      Adds: print or validate config; `validate` exits 2 on errors.
+      Acceptance: validate catches bad config, exits non-zero.
+      Deps: config io.
+
+- [x] `feat(cli): smoke selftest`
+      Files: `crates/smoke-cli/src/main.rs` (`cmd_selftest`).
+      Adds: verify config parses, state parses, registry non-empty.
+      Exits non-zero on failures.
+      Acceptance: returns 0 in dev env.
+      Deps: status.
+
 - [ ] `feat(cli): smoke dump`
-      Files: `crates/smoke-cli/src/cmd/dump.rs`.
+      Files: `crates/smoke-cli/src/main.rs` (`cmd_dump`).
       Adds: walk every registered module's `enumerate()`, emit
       JSON/text. `--out FILE`, `--real` (skip spoofed view),
       `--spoofed`.
@@ -255,33 +278,12 @@ and the R&D spike for the memory scanner.
       Deps: list.
 
 - [ ] `feat(cli): smoke fingerprint`
-      Files: `crates/smoke-cli/src/cmd/fingerprint.rs`.
+      Files: `crates/smoke-cli/src/main.rs` (`cmd_fingerprint`).
       Adds: SHA-256 over canonicalized dump output. Stable across
       re-runs if input is stable.
-      Acceptance: same machine → same fingerprint (modulo real
+      Acceptance: same machine -> same fingerprint (modulo real
       changes); test with canned dump.
       Deps: dump.
-
-- [x] `feat(cli): smoke status`
-      Files: `crates/smoke-cli/src/cmd/status.rs`.
-      Adds: read state.json, summarize per-module coverage and
-      last-applied.
-      Acceptance: tests with seeded state file.
-      Deps: state.
-
-- [x] `feat(cli): smoke config show/validate`
-      Files: `crates/smoke-cli/src/cmd/config.rs`.
-      Adds: print or validate config; `validate` exits non-zero on
-      schema errors with a helpful message.
-      Acceptance: validation tests for good/bad configs.
-      Deps: config io.
-
-- [x] `feat(cli): smoke selftest`
-      Files: `crates/smoke-cli/src/cmd/selftest.rs`.
-      Adds: smoke-the-binary - verify state/backup dirs writable
-      (when root), config parses, registry non-empty.
-      Acceptance: returns 0 in dev env.
-      Deps: status.
 
 - [ ] `test: integration harness for dump before/after`
       Files: `tests/dump_diff.rs`.
@@ -323,16 +325,57 @@ and the R&D spike for the memory scanner.
       Acceptance: a fresh agent can follow it.
       Deps: Phase 0 mostly done.
 
+- [x] `feat(cli): smoke scan and watch commands`
+      Files: `crates/smoke-cli/src/main.rs`, `src/cli.rs`,
+      `crates/smoke-cli/Cargo.toml`.
+      Adds: `smoke scan` (one-shot memory scan with pattern or YARA
+      rule) and `smoke watch` (polling watch mode). Wires
+      `smoke-scan` as a dependency of `smoke-cli`.
+      Acceptance: `smoke scan "pattern"` finds the pattern in self
+      memory.
+      Deps: smoke-scan.
+
+### P0 - Phase 0 cleanup
+
+- [x] `fix(core): coherent consistent profile + ValueGenerator trait`
+      Files: `rng/mod.rs`, `rng/consistent.rs`, `rng/random.rs`,
+      `rng/lam.rs`, `rng/pinned.rs`, `vendors.rs`, `data/vendors.toml`.
+      Fixes: ConsistentProfile now picks DMI first, finds matching
+      OUI for that vendor (coherent MAC+DMI). Adds ValueGenerator
+      trait + factory. Expands OUI table to ~48 entries.
+
+- [x] `fix(core): backup store preserves history + integrity manifest`
+      Files: `backup/mod.rs`, `backup/manifest.rs`.
+      Fixes: backup snapshots are timestamped; originals never
+      clobbered. SHA-256 manifest wired into BackupStore.
+
+- [x] `fix(core): executor writes backups, verifies, enforces requires/risks`
+      Files: `executor.rs`, `module.rs`.
+      Fixes: ApplyCtx carries Profile + overrides + generator.
+      Executor enforces root requirement and risk gating. Writes
+      backups, updates current_values, clears state on revert.
+
+- [x] `fix(cli): implement list filters, --config override, exit codes`
+      Files: `main.rs`, `cli.rs`, `config/io.rs`.
+      Fixes: --category/--status filters work. XDG_CONFIG_HOME
+      respected. --config global flag. Exit codes per SPEC.
+
+- [x] `fix(scan): harden walker and output layer`
+      Files: `walker.rs`, `yara_probe.rs`, `output.rs`.
+      Fixes: empty-needle panic guard, parse_maps preserves paths
+      with spaces, scan_bytes returns Result, SAFETY comment added,
+      dead verbose helpers removed.
+
 ### P0 - Open questions
 
-- Q-P0-1: YARA is GPLv3 - but it's a *runtime* dependency. Confirm we
-  can depend on it under GPLv3-only without GPLv3-only incompatibility
-  (it should be fine). If not, use `/proc/<pid>/mem` walker only.
-- Q-P0-2: Do we want ed25519 signing for the backup manifest in 0.1,
-  or defer to "integrity only via SHA-256"? Recommendation: defer
-  signing; keep SHA-256 manifest only.
-- Q-P0-3: Should `smoke dump` include a `--redact` flag for safe
-  sharing (replaces values with hashes)? Likely yes; add during P0.
+- Q-P0-1: **Resolved.** Using `boreal` (pure Rust YARA, MPL-2.0),
+  not upstream YARA (GPLv3). MPL-2.0 is GPL-3.0-compatible per
+  MPL section 6.1. No license issue.
+- Q-P0-2: **Resolved.** SHA-256 manifest only, no ed25519 signing
+  in 0.1. The manifest is wired into BackupStore and verified on
+  load.
+- Q-P0-3: `--redact` flag for `smoke dump` - deferred to when dump
+  is implemented.
 
 ---
 
