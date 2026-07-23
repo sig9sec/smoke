@@ -55,12 +55,15 @@ pub struct RotateCtx {
     pub generator: Box<dyn ValueGenerator>,
 }
 
+/// Report returned by `SmokeModule::apply`. Lists every value changed
+/// and any non-fatal warnings.
 #[derive(Debug, Clone, Default)]
 pub struct ApplyReport {
     pub changed: Vec<Change>,
     pub warnings: Vec<String>,
 }
 
+/// One value modification recorded in an [`ApplyReport`].
 #[derive(Debug, Clone)]
 pub struct Change {
     pub identifier: String,
@@ -68,18 +71,21 @@ pub struct Change {
     pub new_value: String,
 }
 
+/// Report returned by `SmokeModule::rotate`.
 #[derive(Debug, Clone, Default)]
 pub struct RotateReport {
     pub rotated: Vec<String>,
     pub warnings: Vec<String>,
 }
 
+/// Report returned by `SmokeModule::revert`.
 #[derive(Debug, Clone, Default)]
 pub struct RevertReport {
     pub reverted: Vec<String>,
     pub warnings: Vec<String>,
 }
 
+/// Snapshot of a module's current state, surfaced by `smoke status`.
 #[derive(Debug, Clone, Default)]
 pub struct ModuleStatus {
     pub enabled: bool,

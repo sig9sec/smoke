@@ -36,6 +36,7 @@ pub struct PinnedIdentity {
     pub dmi: Option<PinnedDmi>,
 }
 
+/// DMI/SMBIOS fields inside a [`PinnedIdentity`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PinnedDmi {
     pub sys_vendor: Option<String>,

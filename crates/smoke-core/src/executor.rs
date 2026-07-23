@@ -26,6 +26,11 @@ use crate::state::State;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
+/// Orchestrates apply / rotate / revert across registered modules.
+///
+/// Handles prerequisite enforcement (root, risk level), backup writes,
+/// and state updates. Borrows the registry, config, state, and backup
+/// store for its lifetime.
 pub struct Executor<'a> {
     registry: &'a Registry,
     config: &'a SmokeConfig,

@@ -19,6 +19,8 @@ use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use std::sync::Mutex;
 
+/// Generate a locally-administered unicast MAC (LAM bit set, multicast
+/// bit clear).
 pub fn random_mac(rng: &mut ChaCha20Rng) -> String {
     let mut buf = [0u8; 6];
     rng.fill(&mut buf);
@@ -29,6 +31,7 @@ pub fn random_mac(rng: &mut ChaCha20Rng) -> String {
     )
 }
 
+/// Generate a RFC 4122 version 4 (random) UUID.
 pub fn random_uuid_v4(rng: &mut ChaCha20Rng) -> String {
     let mut buf = [0u8; 16];
     rng.fill(&mut buf);
@@ -55,6 +58,7 @@ pub fn random_uuid_v4(rng: &mut ChaCha20Rng) -> String {
     )
 }
 
+/// Generate a random alphanumeric serial of the given length.
 pub fn random_serial(rng: &mut ChaCha20Rng, len: usize) -> String {
     const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     (0..len)
@@ -62,6 +66,7 @@ pub fn random_serial(rng: &mut ChaCha20Rng, len: usize) -> String {
         .collect()
 }
 
+/// Generate a plausible hostname in `adjective-noun-number` form.
 pub fn random_hostname(rng: &mut ChaCha20Rng) -> String {
     const ADJ: &[&str] = &[
         "swift", "calm", "dark", "bright", "warm", "cool", "soft", "hard", "fast", "slow", "deep",
@@ -77,6 +82,8 @@ pub fn random_hostname(rng: &mut ChaCha20Rng) -> String {
     format!("{adj}-{noun}-{num}")
 }
 
+/// [`ValueGenerator`] that produces fully random values with no
+/// cross-identifier coherence. See SPEC section 6.4.
 pub struct RandomProfile {
     rng: Mutex<ChaCha20Rng>,
 }

@@ -21,10 +21,13 @@ use std::path::{Path, PathBuf};
 
 const SYSTEM_STATE_PATH: &str = "/var/lib/smoke/state.json";
 
+/// Default state file path: `/var/lib/smoke/state.json`.
 pub fn default_state_path() -> PathBuf {
     PathBuf::from(SYSTEM_STATE_PATH)
 }
 
+/// Load and parse state JSON. Accepts empty files (returns default).
+/// Rejects `version != 1`.
 pub fn load(path: &Path) -> Result<State> {
     let content = fs::read_to_string(path).map_err(|e| SmokeError::Io {
         path: path.to_path_buf(),
@@ -44,6 +47,7 @@ pub fn load(path: &Path) -> Result<State> {
     Ok(state)
 }
 
+/// Serialize state to JSON and write atomically via temp-file rename.
 pub fn save(path: &Path, state: &State) -> Result<()> {
     let content = serde_json::to_string_pretty(state)
         .map_err(|e| SmokeError::State(format!("serialize error: {e}")))?;

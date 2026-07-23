@@ -21,6 +21,8 @@ use std::path::{Path, PathBuf};
 
 const SYSTEM_CONFIG_PATH: &str = "/etc/smoke/smoke.toml";
 
+/// Resolve the config file path: system (`/etc/smoke/smoke.toml`)
+/// takes precedence, then falls back to `$XDG_CONFIG_HOME/smoke/smoke.toml`.
 pub fn default_config_path() -> PathBuf {
     if Path::new(SYSTEM_CONFIG_PATH).exists() {
         return PathBuf::from(SYSTEM_CONFIG_PATH);
@@ -31,6 +33,8 @@ pub fn default_config_path() -> PathBuf {
     PathBuf::from(SYSTEM_CONFIG_PATH)
 }
 
+/// Like [`default_config_path`] but returns `None` if no config file
+/// exists on disk.
 pub fn default_config_path_if_exists() -> Option<PathBuf> {
     let path = default_config_path();
     if path.exists() { Some(path) } else { None }
@@ -46,6 +50,7 @@ fn config_dir() -> Option<PathBuf> {
     std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config").join("smoke"))
 }
 
+/// Load and parse a TOML config file. Rejects `version != 1`.
 pub fn load(path: &Path) -> Result<SmokeConfig> {
     let content = fs::read_to_string(path).map_err(|e| SmokeError::Io {
         path: path.to_path_buf(),
@@ -62,6 +67,7 @@ pub fn load(path: &Path) -> Result<SmokeConfig> {
     Ok(cfg)
 }
 
+/// Serialize config to TOML and write atomically via temp-file rename.
 pub fn save(path: &Path, cfg: &SmokeConfig) -> Result<()> {
     let content = toml::to_string_pretty(cfg)
         .map_err(|e| SmokeError::Config(format!("serialize error: {e}")))?;

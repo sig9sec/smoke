@@ -16,6 +16,9 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Spoofing coverage tier for a single identifier.
+///
+/// Ordered from worst to best. See SPEC section 3 for the full table.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Tier {
     None,
@@ -37,6 +40,10 @@ impl Tier {
     }
 }
 
+/// Technique used to spoof an identifier.
+///
+/// A module may combine multiple strategies (e.g. `FileOverwrite` +
+/// `PeriodicRotation`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Strategy {
     FileOverwrite,
@@ -48,12 +55,16 @@ pub enum Strategy {
     BootPatch,
 }
 
+/// What a module achieves and how.
+///
+/// Reported by `SmokeModule::coverage` and surfaced in `doctor` output.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Coverage {
     pub achieved_tier: Tier,
     pub strategies: Vec<Strategy>,
 }
 
+/// Risk severity used by the executor to gate `--force`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RiskLevel {
     Low,
@@ -62,6 +73,9 @@ pub enum RiskLevel {
     Critical,
 }
 
+/// Risk assessment for a module's operations.
+///
+/// `High` and `Critical` require `--force` in the executor.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Risk {
     pub level: RiskLevel,
@@ -69,6 +83,7 @@ pub struct Risk {
     pub mitigations: Vec<String>,
 }
 
+/// Runtime prerequisites a module needs to apply successfully.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Requirements {
     pub root: bool,

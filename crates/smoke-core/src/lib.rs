@@ -14,6 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+//! Core types, config, state, and module trait for the `smoke` privacy suite.
+//!
+//! This crate provides the shared infrastructure that CLI commands and
+//! identifier modules build on:
+//!
+//! - [`module::SmokeModule`] - the trait every identifier group implements.
+//! - [`registry::Registry`] - collects registered modules for dispatch.
+//! - [`executor::Executor`] - orchestrates apply / rotate / revert with
+//!   prerequisite checks, backup writes, and state updates.
+//! - [`config::SmokeConfig`] - user-facing TOML configuration.
+//! - [`state::State`] - persisted runtime state (current values, rotation
+//!   counters).
+//! - [`backup::BackupStore`] - timestamped original-value snapshots with
+//!   SHA-256 tamper detection.
+//! - [`rng`] - randomization profiles (random, consistent, LAM, pinned)
+//!   that produce spoofed identifier values.
+
 pub mod backup;
 pub mod config;
 pub mod coverage;

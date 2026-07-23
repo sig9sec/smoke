@@ -17,6 +17,11 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+/// SHA-256 integrity manifest mapping backup file paths to their hashes.
+///
+/// Stored as `manifest.json` inside each module's backup directory.
+/// [`BackupStore`](super::BackupStore) verifies entries on load to
+/// detect tampering.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Manifest {
     pub entries: BTreeMap<String, String>,

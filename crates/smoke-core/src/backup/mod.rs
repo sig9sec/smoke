@@ -26,6 +26,7 @@ use std::path::PathBuf;
 const SYSTEM_BACKUP_DIR: &str = "/var/lib/smoke/backup";
 const MANIFEST_FILE: &str = "manifest.json";
 
+/// Default backup directory: `/var/lib/smoke/backup`.
 pub fn default_backup_dir() -> PathBuf {
     PathBuf::from(SYSTEM_BACKUP_DIR)
 }

@@ -21,6 +21,20 @@ use crate::rng::{Profile, ValueOverride};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// Root configuration loaded from `smoke.toml`.
+///
+/// # Example
+///
+/// ```toml
+/// version = 1
+/// profile = "consistent"
+///
+/// [modules.machine-id]
+/// enabled = true
+///
+/// [rotation]
+/// default_period = "boot"
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SmokeConfig {
     pub version: u32,
@@ -34,6 +48,7 @@ pub struct SmokeConfig {
     pub log_scrub: LogScrubConfig,
 }
 
+/// Per-module configuration block inside `smoke.toml`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModuleConfig {
     #[serde(default = "default_true")]
@@ -42,12 +57,14 @@ pub struct ModuleConfig {
     pub overrides: HashMap<IdentifierId, ValueOverride>,
 }
 
+/// Rotation policy settings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RotationConfig {
     #[serde(default = "default_rotation_period")]
     pub default_period: String,
 }
 
+/// Log scrubbing configuration.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct LogScrubConfig {
     #[serde(default)]

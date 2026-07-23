@@ -19,6 +19,10 @@ pub mod io;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// Persisted runtime state, stored as JSON at `/var/lib/smoke/state.json`.
+///
+/// Tracks which modules have been applied, their current spoofed values,
+/// and rotation counters.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct State {
     pub version: u32,
@@ -26,6 +30,7 @@ pub struct State {
     pub modules: HashMap<String, ModuleState>,
 }
 
+/// Per-module state entry.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ModuleState {
     #[serde(default)]

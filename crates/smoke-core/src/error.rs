@@ -16,36 +16,46 @@
 
 use std::path::PathBuf;
 
+/// Errors returned by smoke-core operations.
 #[derive(Debug, thiserror::Error)]
 pub enum SmokeError {
+    /// Filesystem I/O failure, with the path that was accessed.
     #[error("io error at {path}: {source}")]
     Io {
         path: PathBuf,
         source: std::io::Error,
     },
 
+    /// Configuration parse or validation error.
     #[error("config error: {0}")]
     Config(String),
 
+    /// State file parse or version mismatch error.
     #[error("state error: {0}")]
     State(String),
 
+    /// Insufficient permissions (not root, missing capability, etc.).
     #[error("permission denied: {0}")]
     Permission(String),
 
+    /// Module-specific logic error.
     #[error("module error: {0}")]
     Module(String),
 
+    /// Operation requires root privileges.
     #[error("root required: {0}")]
     NotRoot(String),
 
+    /// Backup integrity verification failed.
     #[error("verification failed: {0}")]
     Verify(String),
 
+    /// Feature or operation is not supported in this build or environment.
     #[error("unsupported: {0}")]
     Unsupported(String),
 }
 
+/// Convenience alias used throughout smoke-core.
 pub type Result<T> = std::result::Result<T, SmokeError>;
 
 #[cfg(test)]

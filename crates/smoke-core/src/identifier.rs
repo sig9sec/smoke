@@ -16,6 +16,9 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Stable string key for a single identifier within a module.
+///
+/// Used as a HashMap key for overrides and current-value tracking.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct IdentifierId(String);
 
@@ -35,6 +38,7 @@ impl std::fmt::Display for IdentifierId {
     }
 }
 
+/// Coarse grouping of identifiers, used for `--category` filtering.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Category {
     Dmi,
@@ -55,6 +59,7 @@ pub enum Category {
     Misc,
 }
 
+/// One discovered identifier value from the host.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Finding {
     pub id: IdentifierId,
@@ -64,6 +69,10 @@ pub struct Finding {
     pub read_path: String,
 }
 
+/// Collection of [`Finding`]s returned by `SmokeModule::enumerate`.
+///
+/// `partial_failures` records sources that could not be read (e.g.
+/// permission denied) without aborting the entire enumeration.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Findings {
     pub items: Vec<Finding>,

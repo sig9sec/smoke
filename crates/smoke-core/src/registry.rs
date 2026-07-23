@@ -18,6 +18,11 @@ use crate::Category;
 use crate::config::SmokeConfig;
 use crate::module::SmokeModule;
 
+/// Collection of registered [`SmokeModule`]s.
+///
+/// The CLI builds one `Registry` at startup, registers every available
+/// module, then passes it to the [`Executor`](crate::executor::Executor)
+/// or queries it for `list` / `status` commands.
 pub struct Registry {
     modules: Vec<Box<dyn SmokeModule>>,
 }
