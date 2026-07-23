@@ -19,11 +19,12 @@ use crate::SmokeError;
 use crate::backup::{BackupEntry, BackupStore};
 use crate::config::SmokeConfig;
 use crate::coverage::RiskLevel;
-use crate::module::{ApplyCtx, ApplyReport, Change, RotateCtx, RotateReport};
+use crate::module::{ApplyCtx, ApplyReport, Change, RevertCtx, RotateCtx, RotateReport};
 use crate::registry::Registry;
 use crate::rng;
 use crate::state::State;
 
+use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Orchestrates apply / rotate / revert across registered modules.
@@ -131,16 +132,31 @@ impl<'a> Executor<'a> {
         Ok(reports)
     }
 
-    pub fn revert(&mut self, module_ids: &[&str]) -> Result<Vec<crate::module::RevertReport>> {
+    pub fn revert(
+        &mut self,
+        module_ids: &[&str],
+        dry_run: bool,
+    ) -> Result<Vec<crate::module::RevertReport>> {
         let mut reports = Vec::new();
         for module in self.registry.iter_enabled(self.config) {
             if !module_ids.is_empty() && !module_ids.contains(&module.id()) {
                 continue;
             }
 
-            let report = module.revert()?;
+            let mut originals = HashMap::new();
+            for entry in self.backup.list_module(module.id())? {
+                originals
+                    .entry(entry.identifier.clone())
+                    .or_insert(entry.original_value.clone());
+            }
 
-            self.state.modules.remove(module.id());
+            let ctx = RevertCtx { dry_run, originals };
+
+            let report = module.revert(&ctx)?;
+
+            if !dry_run {
+                self.state.modules.remove(module.id());
+            }
 
             reports.push(report);
         }
@@ -252,7 +268,7 @@ mod tests {
         fn status(&self) -> Result<ModuleStatus> {
             Ok(ModuleStatus::default())
         }
-        fn revert(&self) -> Result<RevertReport> {
+        fn revert(&self, _: &RevertCtx) -> Result<RevertReport> {
             Ok(RevertReport {
                 reverted: vec!["test-id".into()],
                 warnings: vec![],
@@ -377,7 +393,7 @@ mod tests {
         assert!(applied);
         {
             let mut exec = Executor::new(&reg, &config, &mut state, &backup);
-            exec.revert(&["mod-a"]).unwrap();
+            exec.revert(&["mod-a"], false).unwrap();
         }
         assert!(!state.modules.contains_key("mod-a"));
     }

@@ -117,7 +117,7 @@ mod tests {
         fn status(&self) -> Result<ModuleStatus> {
             Ok(ModuleStatus::default())
         }
-        fn revert(&self) -> Result<RevertReport> {
+        fn revert(&self, _: &RevertCtx) -> Result<RevertReport> {
             Ok(RevertReport::default())
         }
         fn coverage(&self) -> Coverage {

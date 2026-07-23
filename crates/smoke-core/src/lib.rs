@@ -47,6 +47,7 @@ pub use coverage::{Coverage, Requirements, Risk, RiskLevel, Strategy, Tier};
 pub use error::{Result, SmokeError};
 pub use identifier::{Category, Finding, Findings, IdentifierId};
 pub use module::{
-    ApplyCtx, ApplyReport, Change, ModuleStatus, RevertReport, RotateCtx, RotateReport, SmokeModule,
+    ApplyCtx, ApplyReport, Change, ModuleStatus, RevertCtx, RevertReport, RotateCtx, RotateReport,
+    SmokeModule,
 };
 pub use rng::{Profile, ValueGenerator, ValueOverride};

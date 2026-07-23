@@ -32,7 +32,7 @@ pub trait SmokeModule: Send + Sync {
     fn apply(&self, ctx: &ApplyCtx) -> Result<ApplyReport>;
     fn rotate(&self, ctx: &RotateCtx) -> Result<RotateReport>;
     fn status(&self) -> Result<ModuleStatus>;
-    fn revert(&self) -> Result<RevertReport>;
+    fn revert(&self, ctx: &RevertCtx) -> Result<RevertReport>;
     fn coverage(&self) -> Coverage;
     fn risks(&self) -> Risk;
 }
@@ -53,6 +53,13 @@ pub struct RotateCtx {
     pub profile: Profile,
     pub overrides: HashMap<IdentifierId, ValueOverride>,
     pub generator: Box<dyn ValueGenerator>,
+}
+
+/// Context passed to `SmokeModule::revert`. Carries the original
+/// values loaded from the backup store.
+pub struct RevertCtx {
+    pub dry_run: bool,
+    pub originals: HashMap<String, String>,
 }
 
 /// Report returned by `SmokeModule::apply`. Lists every value changed
