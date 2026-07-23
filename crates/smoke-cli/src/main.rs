@@ -23,9 +23,25 @@ use smoke_core::config::{self, SmokeConfig};
 use smoke_core::registry::Registry;
 use smoke_core::state::{self, State};
 use std::path::PathBuf;
+use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
 fn main() {
     let cli = Cli::parse();
+
+    let default_level = match cli.verbose {
+        0 => "warn",
+        1 => "info",
+        2 => "debug",
+        _ => "trace",
+    };
+    let env_filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new(format!("smoke={default_level}")));
+
+    tracing_subscriber::registry()
+        .with(env_filter)
+        .with(fmt::layer().with_target(false))
+        .init();
+
     let config_path = cli
         .config
         .as_ref()
@@ -75,6 +91,7 @@ fn main() {
     };
 
     if let Err(e) = result {
+        tracing::error!("{e}");
         eprintln!("error: {e}");
         std::process::exit(2);
     }
@@ -82,16 +99,24 @@ fn main() {
 
 fn load_config_from(path: &Option<PathBuf>) -> Result<SmokeConfig, Box<dyn std::error::Error>> {
     match path {
-        Some(p) => Ok(config::io::load(p)?),
-        None => Ok(SmokeConfig::default()),
+        Some(p) => {
+            tracing::debug!(path = %p.display(), "loading config");
+            Ok(config::io::load(p)?)
+        }
+        None => {
+            tracing::debug!("no config file, using defaults");
+            Ok(SmokeConfig::default())
+        }
     }
 }
 
 fn load_state() -> Result<State, Box<dyn std::error::Error>> {
     let path = state::io::default_state_path();
     if path.exists() {
+        tracing::debug!(path = %path.display(), "loading state");
         Ok(state::io::load(&path)?)
     } else {
+        tracing::debug!("no state file, using defaults");
         Ok(State::default())
     }
 }
@@ -102,6 +127,7 @@ fn cmd_apply(
     _dry_run: bool,
     _force: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    tracing::info!("apply requested");
     unimplemented!("smoke apply")
 }
 
@@ -109,6 +135,7 @@ fn cmd_rotate(
     _module: Vec<String>,
     _period: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    tracing::info!("rotate requested");
     unimplemented!("smoke rotate")
 }
 
@@ -174,6 +201,7 @@ fn cmd_revert(
     _all: bool,
     _force: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    tracing::info!("revert requested");
     unimplemented!("smoke revert")
 }
 

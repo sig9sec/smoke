@@ -26,6 +26,9 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub config: Option<String>,
 
+    #[arg(short, long, global = true, action = clap::ArgAction::Count)]
+    pub verbose: u8,
+
     #[command(subcommand)]
     pub command: Commands,
 }
