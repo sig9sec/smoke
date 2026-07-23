@@ -19,9 +19,12 @@ mod output;
 
 use clap::Parser;
 use cli::{Cli, Commands, ConfigAction, ServiceAction};
+use smoke_core::backup::{self, BackupStore};
 use smoke_core::config::{self, SmokeConfig};
+use smoke_core::executor::Executor;
 use smoke_core::registry::Registry;
 use smoke_core::state::{self, State};
+use smoke_modules::MachineIdModule;
 use std::path::PathBuf;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
@@ -54,11 +57,11 @@ fn main() {
             profile,
             dry_run,
             force,
-        } => cmd_apply(module, profile, dry_run, force),
-        Commands::Rotate { module, period } => cmd_rotate(module, period),
+        } => cmd_apply(module, profile, dry_run, force, &config_path),
+        Commands::Rotate { module, period } => cmd_rotate(module, period, &config_path),
         Commands::Status { module, json } => cmd_status(module, json),
         Commands::Doctor { fix } => cmd_doctor(fix),
-        Commands::Revert { module, all, force } => cmd_revert(module, all, force),
+        Commands::Revert { module, all, force } => cmd_revert(module, all, force, &config_path),
         Commands::Enable { module } => cmd_enable(module),
         Commands::Disable { module } => cmd_disable(module),
         Commands::List { category, status } => cmd_list(category, status, &config_path),
@@ -121,22 +124,85 @@ fn load_state() -> Result<State, Box<dyn std::error::Error>> {
     }
 }
 
+fn build_registry() -> Registry {
+    let mut reg = Registry::new();
+    reg.register(Box::new(MachineIdModule::new()));
+    reg
+}
+
 fn cmd_apply(
-    _module: Vec<String>,
+    module: Vec<String>,
     _profile: Option<String>,
-    _dry_run: bool,
-    _force: bool,
+    dry_run: bool,
+    force: bool,
+    config_path: &Option<PathBuf>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    tracing::info!("apply requested");
-    unimplemented!("smoke apply")
+    let config = load_config_from(config_path)?;
+    let mut state = load_state()?;
+    let backup = BackupStore::new(backup::default_backup_dir());
+
+    let registry = build_registry();
+    let module_ids: Vec<&str> = module.iter().map(|s| s.as_str()).collect();
+    let mut exec = Executor::new(&registry, &config, &mut state, &backup);
+    let reports = exec.apply(&module_ids, dry_run, force)?;
+
+    let mut total_changes = 0;
+    for report in &reports {
+        for change in &report.changed {
+            println!(
+                "  {}: {} -> {}",
+                change.identifier, change.old_value, change.new_value
+            );
+            total_changes += 1;
+        }
+        for warning in &report.warnings {
+            eprintln!("  warn: {warning}");
+        }
+    }
+
+    if dry_run {
+        println!("dry-run: {total_changes} change(s) planned");
+    } else if total_changes > 0 {
+        let state_path = state::io::default_state_path();
+        state::io::save(&state_path, &state)?;
+        println!("applied: {total_changes} change(s)");
+    } else {
+        println!("nothing to change");
+    }
+
+    Ok(())
 }
 
 fn cmd_rotate(
-    _module: Vec<String>,
+    module: Vec<String>,
     _period: Option<String>,
+    config_path: &Option<PathBuf>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    tracing::info!("rotate requested");
-    unimplemented!("smoke rotate")
+    let config = load_config_from(config_path)?;
+    let mut state = load_state()?;
+    let backup = BackupStore::new(backup::default_backup_dir());
+
+    let registry = build_registry();
+    let module_ids: Vec<&str> = module.iter().map(|s| s.as_str()).collect();
+    let mut exec = Executor::new(&registry, &config, &mut state, &backup);
+    let reports = exec.rotate(&module_ids, false)?;
+
+    let mut total = 0;
+    for report in &reports {
+        for id in &report.rotated {
+            println!("  rotated: {id}");
+            total += 1;
+        }
+    }
+
+    if total > 0 {
+        let state_path = state::io::default_state_path();
+        state::io::save(&state_path, &state)?;
+    }
+
+    println!("rotated: {total} identifier(s)");
+
+    Ok(())
 }
 
 fn cmd_status(module: Option<String>, json: bool) -> Result<(), Box<dyn std::error::Error>> {
@@ -197,12 +263,36 @@ fn cmd_doctor(_fix: bool) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn cmd_revert(
-    _module: Vec<String>,
+    module: Vec<String>,
     _all: bool,
     _force: bool,
+    config_path: &Option<PathBuf>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    tracing::info!("revert requested");
-    unimplemented!("smoke revert")
+    let config = load_config_from(config_path)?;
+    let mut state = load_state()?;
+    let backup = BackupStore::new(backup::default_backup_dir());
+
+    let registry = build_registry();
+    let module_ids: Vec<&str> = module.iter().map(|s| s.as_str()).collect();
+    let mut exec = Executor::new(&registry, &config, &mut state, &backup);
+    let reports = exec.revert(&module_ids, false)?;
+
+    let mut total = 0;
+    for report in &reports {
+        for id in &report.reverted {
+            println!("  reverted: {id}");
+            total += 1;
+        }
+    }
+
+    if total > 0 {
+        let state_path = state::io::default_state_path();
+        state::io::save(&state_path, &state)?;
+    }
+
+    println!("reverted: {total} identifier(s)");
+
+    Ok(())
 }
 
 fn cmd_enable(_module: String) -> Result<(), Box<dyn std::error::Error>> {
@@ -219,7 +309,7 @@ fn cmd_list(
     config_path: &Option<PathBuf>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let config = load_config_from(config_path)?;
-    let registry = Registry::new();
+    let registry = build_registry();
 
     let mut rows = Vec::new();
     for module in registry.all() {
@@ -352,7 +442,7 @@ fn cmd_selftest(config_path: &Option<PathBuf>) -> Result<(), Box<dyn std::error:
         println!("  [skip] no state file");
     }
 
-    let registry = Registry::new();
+    let registry = build_registry();
     if registry.is_empty() {
         println!("  [warn] no modules registered");
     } else {

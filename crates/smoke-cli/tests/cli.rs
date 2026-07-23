@@ -85,12 +85,12 @@ fn config_validate_missing_file() {
 }
 
 #[test]
-fn list_no_modules() {
+fn list_shows_machine_id() {
     let mut cmd = Command::cargo_bin("smoke").unwrap();
     cmd.args(["list"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("no modules registered"));
+        .stdout(predicate::str::contains("machine-id"));
 }
 
 #[test]
@@ -109,6 +109,24 @@ fn selftest_no_config() {
         .assert()
         .success()
         .stdout(predicate::str::contains("selftest complete"));
+}
+
+#[test]
+fn apply_dry_run_machine_id() {
+    let mut cmd = Command::cargo_bin("smoke").unwrap();
+    cmd.args(["apply", "--module", "machine-id", "--dry-run"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("dry-run"));
+}
+
+#[test]
+fn apply_dry_run_unknown_module() {
+    let mut cmd = Command::cargo_bin("smoke").unwrap();
+    cmd.args(["apply", "--module", "nonexistent", "--dry-run"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("0 change(s) planned"));
 }
 
 #[test]

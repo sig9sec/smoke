@@ -68,7 +68,13 @@ impl<'a> Executor<'a> {
                 continue;
             }
 
-            self.check_prerequisites(module.id(), module.requires(), module.risks(), force)?;
+            self.check_prerequisites(
+                module.id(),
+                module.requires(),
+                module.risks(),
+                force,
+                dry_run,
+            )?;
 
             let mod_config = self.config.module(module.id());
             let ctx = ApplyCtx {
@@ -108,7 +114,13 @@ impl<'a> Executor<'a> {
                 continue;
             }
 
-            self.check_prerequisites(module.id(), module.requires(), module.risks(), false)?;
+            self.check_prerequisites(
+                module.id(),
+                module.requires(),
+                module.risks(),
+                false,
+                dry_run,
+            )?;
 
             let mod_config = self.config.module(module.id());
             let ctx = RotateCtx {
@@ -169,8 +181,9 @@ impl<'a> Executor<'a> {
         reqs: crate::coverage::Requirements,
         risk: crate::coverage::Risk,
         force: bool,
+        dry_run: bool,
     ) -> Result<()> {
-        if reqs.root && !is_root() {
+        if reqs.root && !is_root() && !dry_run {
             return Err(SmokeError::NotRoot(format!(
                 "module '{module_id}' requires root"
             )));
