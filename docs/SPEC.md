@@ -581,12 +581,17 @@ in Phase 3. See `docs/rnd/memory-scan.md` for the full report.
   adversarial situations.
 - `smoke wrap <app>` - run an app inside a bubblewrap namespace with all
   spoofed mounts so a specific app sees the spoofed view without
-  affecting the host.
+  affecting the host. Planned for Phase 2 (reuses Phase 1 spoofing
+  infrastructure). Flags: `--unshare-net`, `--profile`, `--module`.
+- `--mimic <model>` - generate a profile matching a specific real
+  hardware model for maximum plausibility. Planned for Phase 2.
 - Fleet profile sync (pin many hosts to one identity for honey-potting).
 - TUI dashboard (`smoke tui`).
 - Preset policy profiles (`paranoid`, `balanced`, `stealth-vpn`,
   `lab-vm`).
 - Browser-hardening profile generator (adjacent, opt-in).
+- Drift detection timer - systemd service that runs `smoke doctor`
+  periodically and alerts on values that reverted to their real state.
 
 ---
 

@@ -377,6 +377,45 @@ and the R&D spike for the memory scanner.
 - Q-P0-3: `--redact` flag for `smoke dump` - deferred to when dump
   is implemented.
 
+### P0 - Remaining technical debt
+
+These items are not Phase 1 features but should be addressed before
+or during early Phase 1 work:
+
+- [ ] `docs(core): add doc comments to all public types`
+      `SmokeModule`, `ValueGenerator`, `Profile`, `ValueOverride`,
+      `ApplyCtx`, `RotateCtx`, all report structs, `SmokeError`,
+      `SmokeConfig`, `State`, `BackupStore`, `Registry`, `Executor`.
+      AGENTS.md requires "one doc comment with an example" for new
+      modules. `cargo doc` currently produces empty pages.
+
+- [ ] `chore: build.rs header check for cli and scan crates`
+      Currently only `smoke-core` enforces GPL headers via build.rs.
+      Copy the check to `smoke-cli` and `smoke-scan`, or hoist to
+      a shared xtask.
+
+- [ ] `test(cli): unit tests for list, status, config validate`
+      Extract handlers into testable functions (or use `assert_cmd`).
+      Plan acceptance criteria for these commands required tests that
+      were never written.
+
+- [ ] `chore: centralize workspace dependencies`
+      Move `serde`, `serde_json`, `toml`, `tempfile` etc. into
+      `[workspace.dependencies]` for single-source version control.
+
+- [ ] `chore: add crate metadata`
+      `description`, `repository`, `homepage`, `keywords`,
+      `categories`, `rust-version` in workspace `[workspace.package]`.
+
+- [ ] `ci: add cargo caching and cargo-audit`
+      Add `Swatinem/rust-cache` action. Add `cargo audit` step for
+      security posture.
+
+- [ ] `feat(cli): --verbose flag and tracing integration`
+      Wire `tracing` + `tracing-subscriber` into the CLI. Add
+      `--verbose` global flag. Deferred from the original logging
+      commit; needed once real modules produce diagnostic output.
+
 ---
 
 ## Phase 1 - Userspace MVP
@@ -866,6 +905,8 @@ out of scope; `doctor` reports what's left for Phase 3.
 - §5.18 cert rotation, mDNS/UPnP disable.
 - §5.10 GPU/DRM sysfs bind-mount.
 - §5.19 PCI/NUMA/topology sysfs bind-mounts (opt-in).
+- `smoke wrap` - per-app bubblewrap namespace sandbox (pulled forward
+  from Phase 5; reuses Phase 1 spoofing infrastructure).
 
 ### P2 - Commit sketch (to be detailed when Phase 1 lands)
 
@@ -889,6 +930,29 @@ out of scope; `doctor` reports what's left for Phase 3.
 - `feat(mod-services): TLS cert rotation framework`
 - `feat(mod-services): mDNS/UPnP disable helpers`
 - `feat(mod-sysfs): generic opt-in bind-mount for pci/numa/topology`
+- `feat(wrap): generate spoofed content tree for namespace`
+      Adds: given a Profile, materialize all spoofed files (machine-id,
+      hostname, DMI sysfs, /proc/cpuinfo, MAC config, etc.) into a
+      temp directory. Reuses module enumerate/generate logic in a
+      "dry render" mode that writes to a directory instead of the host.
+- `feat(wrap): bubblewrap namespace launcher`
+      Adds: `smoke wrap <command>` runs the target inside a bwrap
+      namespace with spoofed paths bind-mounted over the real ones.
+      Flags: `--unshare-net` (network isolation), `--profile NAME`,
+      `--module NAME` (selective spoofing). No root required (user
+      namespaces).
+- `feat(wrap): doctor coverage for namespace sandbox`
+      Adds: doctor verifies that spoofed paths inside the namespace
+      differ from host values. Reports which identifiers are covered.
+- `feat(profiles): --mimic <model> hardware template`
+      Adds: generate a profile matching a specific real hardware model
+      (e.g. `--mimic "ThinkPad X1 Carbon Gen 11"`). Uses the vendor
+      catalog to produce a maximally plausible DMI/MAC combination.
+- `feat(doctor): drift detection systemd timer`
+      Adds: optional systemd timer that runs `smoke doctor` every N
+      minutes and alerts if any identifier has drifted back to its
+      real value (e.g. after a package update regenerated
+      `/etc/machine-id`).
 - `test(p2): e2e coverage on Arch and Debian`
 - `release: v0.2.0`
 
@@ -899,6 +963,14 @@ out of scope; `doctor` reports what's left for Phase 3.
   experimental; gate behind `--enable-experimental`.
 - Q-P2-2: EDID firmware override requires a kernel reboot to take
   effect. Document as `needs-reboot` (exit code 3).
+- Q-P2-3: For `smoke wrap`, do we use `bubblewrap` as an external
+  dependency or implement raw `clone(CLONE_NEWNS | CLONE_NEWUSER)` +
+  `mount --bind`? Recommendation: start with bubblewrap (simpler,
+  widely available), add raw-namespace path later if the dependency
+  is undesirable.
+- Q-P2-4: Should `smoke wrap --unshare-net` also create a veth pair
+  with a spoofed MAC, or just isolate with no network? Recommendation:
+  offer both: default = no network, `--net` = veth with spoofed MAC.
 
 ---
 
@@ -993,7 +1065,6 @@ fingerprints.
 ### P5 - Commit sketch
 
 - `feat(vm): smoke vm launcher (libvirt/qemu with spoofed cpu/dmi/edid)`
-- `feat(wrap): smoke wrap (bubblewrap namespace)`
 - `feat(panic): smoke panic (wipe state + backup + zeroize)`
 - `feat(profiles): preset policy profiles`
 - `feat(tui): smoke tui dashboard`
