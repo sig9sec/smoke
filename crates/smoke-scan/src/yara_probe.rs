@@ -24,11 +24,11 @@ pub fn compile_rule(rule_source: &str) -> Result<Scanner, String> {
     Ok(compiler.finalize())
 }
 
-pub fn scan_bytes(scanner: &Scanner, data: &[u8]) -> Vec<String> {
-    match scanner.scan_mem(data) {
-        Ok(result) => result.rules.iter().map(|r| r.name.to_string()).collect(),
-        Err(_) => Vec::new(),
-    }
+pub fn scan_bytes(scanner: &Scanner, data: &[u8]) -> Result<Vec<String>, String> {
+    scanner
+        .scan_mem(data)
+        .map(|result| result.rules.iter().map(|r| r.name.to_string()).collect())
+        .map_err(|e| format!("YARA scan error: {e:?}"))
 }
 
 #[cfg(test)]
@@ -47,7 +47,7 @@ mod tests {
         "#;
 
         let scanner = compile_rule(rule).unwrap();
-        let hits = scan_bytes(&scanner, b"some data with hello_world_test embedded");
+        let hits = scan_bytes(&scanner, b"some data with hello_world_test embedded").unwrap();
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0], "test_string");
     }
@@ -64,7 +64,7 @@ mod tests {
         "#;
 
         let scanner = compile_rule(rule).unwrap();
-        let hits = scan_bytes(&scanner, b"clean data");
+        let hits = scan_bytes(&scanner, b"clean data").unwrap();
         assert!(hits.is_empty());
     }
 
@@ -86,7 +86,7 @@ mod tests {
         "#;
 
         let scanner = compile_rule(rule).unwrap();
-        let hits = scan_bytes(&scanner, b"alpha and bravo");
+        let hits = scan_bytes(&scanner, b"alpha and bravo").unwrap();
         assert_eq!(hits.len(), 2);
     }
 
@@ -116,7 +116,7 @@ mod tests {
             }
             let mut buf = vec![0u8; size];
             if let Ok(n) = super::super::walker::read_remote_slice(pid, region.start, &mut buf) {
-                let hits = scan_bytes(&scanner, &buf[..n]);
+                let hits = scan_bytes(&scanner, &buf[..n]).unwrap();
                 if !hits.is_empty() {
                     found = true;
                     break;

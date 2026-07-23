@@ -118,7 +118,7 @@ fn cmd_status(module: Option<String>, json: bool) -> Result<(), Box<dyn std::err
     if let Some(mod_name) = module {
         if let Some(ms) = state.modules.get(&mod_name) {
             if json {
-                output::print_json(ms);
+                output::print_json(ms)?;
             } else {
                 println!("module: {mod_name}");
                 println!(
@@ -144,7 +144,7 @@ fn cmd_status(module: Option<String>, json: bool) -> Result<(), Box<dyn std::err
     }
 
     if json {
-        output::print_json(&state);
+        output::print_json(&state)?;
         return Ok(());
     }
 
@@ -385,7 +385,8 @@ fn cmd_scan(
                     if let Ok(n) =
                         smoke_scan::walker::read_remote_slice(*pid, region.start, &mut buf)
                     {
-                        let hits = smoke_scan::yara_probe::scan_bytes(&scanner, &buf[..n]);
+                        let hits = smoke_scan::yara_probe::scan_bytes(&scanner, &buf[..n])
+                            .unwrap_or_default();
                         if !hits.is_empty() {
                             for rule_name in &hits {
                                 println!(
@@ -453,7 +454,8 @@ fn cmd_watch(
                 if let Ok(n) =
                     smoke_scan::walker::read_remote_slice(target_pid, region.start, &mut buf)
                 {
-                    let hits = smoke_scan::yara_probe::scan_bytes(&scanner, &buf[..n]);
+                    let hits =
+                        smoke_scan::yara_probe::scan_bytes(&scanner, &buf[..n]).unwrap_or_default();
                     if !hits.is_empty() {
                         let ts = std::time::SystemTime::now()
                             .duration_since(std::time::UNIX_EPOCH)

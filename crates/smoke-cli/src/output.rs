@@ -14,13 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#![allow(dead_code)]
-
-pub fn print_json<T: serde::Serialize>(value: &T) {
-    match serde_json::to_string_pretty(value) {
-        Ok(json) => println!("{json}"),
-        Err(e) => eprintln!("error serializing JSON: {e}"),
-    }
+pub fn print_json<T: serde::Serialize>(value: &T) -> Result<(), Box<dyn std::error::Error>> {
+    let json = serde_json::to_string_pretty(value)?;
+    println!("{json}");
+    Ok(())
 }
 
 pub fn print_table(headers: &[&str], rows: &[Vec<String>]) {
@@ -54,18 +51,9 @@ pub fn print_table(headers: &[&str], rows: &[Vec<String>]) {
             if i > 0 {
                 print!("  ");
             }
-            print!("{:<width$}", cell, width = widths[i]);
+            let w = widths.get(i).copied().unwrap_or(0);
+            print!("{:<width$}", cell, width = w);
         }
         println!();
-    }
-}
-
-pub fn verbose_enabled() -> bool {
-    std::env::var("SMOKE_VERBOSE").is_ok()
-}
-
-pub fn log_verbose(msg: &str) {
-    if verbose_enabled() {
-        eprintln!("[verbose] {msg}");
     }
 }

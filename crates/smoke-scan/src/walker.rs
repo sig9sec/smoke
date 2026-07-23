@@ -63,7 +63,11 @@ pub fn parse_maps(pid: u32) -> io::Result<Vec<MemoryRegion>> {
             .get(2)
             .and_then(|s| u64::from_str_radix(s, 16).ok())
             .unwrap_or(0);
-        let pathname = parts.get(5).map(|s| s.to_string());
+        let pathname = if parts.len() > 5 {
+            Some(parts[5..].join(" "))
+        } else {
+            None
+        };
 
         regions.push(MemoryRegion {
             start,
@@ -87,6 +91,10 @@ pub fn read_remote_slice(pid: u32, addr: u64, buf: &mut [u8]) -> io::Result<usiz
         iov_len: buf.len(),
     };
 
+    // SAFETY: `local_iov` points to `buf`, which is a valid mutable
+    // slice owned by the caller and outlives this function call. The
+    // kernel will not write more than `iov_len` bytes. `pid` is a valid
+    // Linux PID fitting in `pid_t`.
     let ret =
         unsafe { libc::process_vm_readv(pid as libc::pid_t, &local_iov, 1, &remote_iov, 1, 0) };
 
@@ -137,7 +145,10 @@ pub fn scan_process(pid: u32, needle: &[u8]) -> io::Result<Vec<ScanHit>> {
 }
 
 fn find_in_slice(haystack: &[u8], needle: &[u8], start: usize) -> Option<usize> {
-    if needle.len() > haystack.len() || start > haystack.len() - needle.len() {
+    if needle.is_empty() || needle.len() > haystack.len() {
+        return None;
+    }
+    if start > haystack.len() - needle.len() {
         return None;
     }
     haystack[start..]
@@ -176,6 +187,7 @@ mod tests {
         assert_eq!(find_in_slice(haystack, b"world", 0), Some(6));
         assert_eq!(find_in_slice(haystack, b"world", 7), None);
         assert_eq!(find_in_slice(haystack, b"missing", 0), None);
+        assert_eq!(find_in_slice(haystack, b"", 0), None);
     }
 
     #[test]
