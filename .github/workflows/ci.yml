@@ -9,16 +9,35 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  lint:
-    name: Lint
+  fmt:
+    name: Format
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt, clippy
+          components: rustfmt
       - run: cargo fmt --all -- --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --all-targets -- -D warnings
+
+  audit:
+    name: Security audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rustsec/audit-check@v2.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   test-arch:
     name: Test (Arch)
@@ -31,6 +50,7 @@ jobs:
         run: pacman -Syu --noconfirm rustup base-devel
       - name: Setup Rust stable
         run: rustup default stable
+      - uses: Swatinem/rust-cache@v2
       - run: cargo build
       - run: cargo test
 
@@ -44,10 +64,11 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get update
-          apt-get install -y curl build-essential
+          apt-get install -y curl build-essential pkg-config
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Setup Rust stable
         run: rustup default stable
+      - uses: Swatinem/rust-cache@v2
       - run: cargo build
       - run: cargo test
