@@ -379,42 +379,15 @@ and the R&D spike for the memory scanner.
 
 ### P0 - Remaining technical debt
 
-These items are not Phase 1 features but should be addressed before
-or during early Phase 1 work:
+All resolved. Kept for reference:
 
-- [ ] `docs(core): add doc comments to all public types`
-      `SmokeModule`, `ValueGenerator`, `Profile`, `ValueOverride`,
-      `ApplyCtx`, `RotateCtx`, all report structs, `SmokeError`,
-      `SmokeConfig`, `State`, `BackupStore`, `Registry`, `Executor`.
-      AGENTS.md requires "one doc comment with an example" for new
-      modules. `cargo doc` currently produces empty pages.
-
-- [ ] `chore: build.rs header check for cli and scan crates`
-      Currently only `smoke-core` enforces GPL headers via build.rs.
-      Copy the check to `smoke-cli` and `smoke-scan`, or hoist to
-      a shared xtask.
-
-- [ ] `test(cli): unit tests for list, status, config validate`
-      Extract handlers into testable functions (or use `assert_cmd`).
-      Plan acceptance criteria for these commands required tests that
-      were never written.
-
-- [ ] `chore: centralize workspace dependencies`
-      Move `serde`, `serde_json`, `toml`, `tempfile` etc. into
-      `[workspace.dependencies]` for single-source version control.
-
-- [ ] `chore: add crate metadata`
-      `description`, `repository`, `homepage`, `keywords`,
-      `categories`, `rust-version` in workspace `[workspace.package]`.
-
-- [ ] `ci: add cargo caching and cargo-audit`
-      Add `Swatinem/rust-cache` action. Add `cargo audit` step for
-      security posture.
-
-- [ ] `feat(cli): --verbose flag and tracing integration`
-      Wire `tracing` + `tracing-subscriber` into the CLI. Add
-      `--verbose` global flag. Deferred from the original logging
-      commit; needed once real modules produce diagnostic output.
+- [x] `docs(core): add doc comments to all public types`
+- [x] `chore: build.rs header check for cli and scan crates`
+- [x] `test(cli): unit tests for list, status, config validate`
+- [x] `chore: centralize workspace dependencies`
+- [x] `chore: add crate metadata`
+- [x] `ci: add cargo caching and cargo-audit`
+- [x] `feat(cli): --verbose flag and tracing integration`
 
 ---
 
