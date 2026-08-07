@@ -170,9 +170,91 @@ fn set_kernel_hostname(name: &str) -> Result<()> {
     Ok(())
 }
 
-fn apply_at(base: &Path, ctx: &ApplyCtx) -> Result<ApplyReport> {
+fn set_kernel_domainname(name: &str) -> Result<()> {
+    let c_name = std::ffi::CString::new(name)
+        .map_err(|e| SmokeError::Module(format!("invalid domainname: {e}")))?;
+    let ret = unsafe { libc::setdomainname(c_name.as_ptr(), c_name.as_bytes().len()) };
+    if ret != 0 {
+        return Err(SmokeError::Module(format!(
+            "setdomainname failed: {}",
+            std::io::Error::last_os_error()
+        )));
+    }
+    Ok(())
+}
+
+fn hostname_to_pretty(hostname: &str) -> String {
+    hostname
+        .split('-')
+        .filter(|w| !w.is_empty())
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                Some(first) => first.to_uppercase().chain(chars).collect(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn extract_domain(hostname: &str) -> Option<String> {
+    if hostname.starts_with('.') {
+        return None;
+    }
+    if let Some(idx) = hostname.find('.') {
+        let domain = &hostname[idx + 1..];
+        if !domain.is_empty() && !domain.starts_with('.') {
+            return Some(domain.to_string());
+        }
+    }
+    None
+}
+
+fn update_machine_info(content: &str, pretty: &str) -> Result<String> {
+    if pretty.contains('"') {
+        return Err(SmokeError::Module(
+            "pretty hostname contains invalid characters".into(),
+        ));
+    }
+    let line = format!("PRETTY_HOSTNAME=\"{pretty}\"");
+    let mut found = false;
+    let mut result: Vec<String> = Vec::new();
+
+    for l in content.lines() {
+        if l.starts_with("PRETTY_HOSTNAME=") {
+            result.push(line.clone());
+            found = true;
+        } else {
+            result.push(l.to_string());
+        }
+    }
+    if !found {
+        result.push(line);
+    }
+    Ok(result.join("\n") + "\n")
+}
+
+fn remove_pretty_from_machine_info(content: &str) -> String {
+    let filtered: Vec<&str> = content
+        .lines()
+        .filter(|l| !l.starts_with("PRETTY_HOSTNAME="))
+        .collect();
+    if filtered.is_empty() {
+        String::new()
+    } else {
+        filtered.join("\n") + "\n"
+    }
+}
+
+fn write_hostname(
+    base: &Path,
+    dry_run: bool,
+    overrides: &HashMap<IdentifierId, ValueOverride>,
+    generator: &dyn smoke_core::ValueGenerator,
+) -> Result<ApplyReport> {
     let mut report = ApplyReport::default();
-    let new_hostname = match resolve_hostname(&ctx.overrides, &*ctx.generator) {
+    let new_hostname = match resolve_hostname(overrides, generator) {
         Some(v) => v,
         None => return Ok(report),
     };
@@ -181,7 +263,7 @@ fn apply_at(base: &Path, ctx: &ApplyCtx) -> Result<ApplyReport> {
     let old_hostname = read_optional(&hostname_path);
     if let Some(ref old) = old_hostname {
         if old != &new_hostname {
-            if ctx.dry_run {
+            if dry_run {
                 report.changed.push(Change {
                     identifier: "static-hostname".into(),
                     old_value: old.clone(),
@@ -198,11 +280,33 @@ fn apply_at(base: &Path, ctx: &ApplyCtx) -> Result<ApplyReport> {
         }
     }
 
+    let mi_path = base.join(MACHINE_INFO.trim_start_matches('/'));
+    let mi_content = read_optional(&mi_path).unwrap_or_default();
+    let old_pretty = parse_machine_info(&mi_content);
+    let new_pretty = hostname_to_pretty(&new_hostname);
+    if old_pretty.as_deref() != Some(new_pretty.as_str()) {
+        if dry_run {
+            report.changed.push(Change {
+                identifier: "pretty-hostname".into(),
+                old_value: old_pretty.unwrap_or_default(),
+                new_value: new_pretty.clone(),
+            });
+        } else {
+            let updated = update_machine_info(&mi_content, &new_pretty)?;
+            atomic_write(&mi_path, &updated)?;
+            report.changed.push(Change {
+                identifier: "pretty-hostname".into(),
+                old_value: old_pretty.unwrap_or_default(),
+                new_value: new_pretty,
+            });
+        }
+    }
+
     let mailname_path = base.join(MAILNAME.trim_start_matches('/'));
     let old_mailname = read_optional(&mailname_path);
     if let Some(ref old) = old_mailname {
         if old != &new_hostname {
-            if ctx.dry_run {
+            if dry_run {
                 report.changed.push(Change {
                     identifier: "mailname".into(),
                     old_value: old.clone(),
@@ -219,13 +323,25 @@ fn apply_at(base: &Path, ctx: &ApplyCtx) -> Result<ApplyReport> {
         }
     }
 
-    if !ctx.dry_run && base == Path::new("/") {
+    if !dry_run && base == Path::new("/") {
         if let Err(e) = set_kernel_hostname(&new_hostname) {
             report.warnings.push(format!("sethostname(2) failed: {e}"));
+        }
+
+        if let Some(domain) = extract_domain(&new_hostname) {
+            if let Err(e) = set_kernel_domainname(&domain) {
+                report
+                    .warnings
+                    .push(format!("setdomainname(2) failed: {e}"));
+            }
         }
     }
 
     Ok(report)
+}
+
+fn apply_at(base: &Path, ctx: &ApplyCtx) -> Result<ApplyReport> {
+    write_hostname(base, ctx.dry_run, &ctx.overrides, &*ctx.generator)
 }
 
 fn revert_at(base: &Path, ctx: &RevertCtx) -> Result<RevertReport> {
@@ -246,6 +362,27 @@ fn revert_at(base: &Path, ctx: &RevertCtx) -> Result<RevertReport> {
         }
     }
 
+    let mi_path = base.join(MACHINE_INFO.trim_start_matches('/'));
+    if let Some(original) = ctx.originals.get("pretty-hostname") {
+        if ctx.dry_run {
+            report.reverted.push("pretty-hostname".into());
+        } else if original.is_empty() {
+            let mi_content = std::fs::read_to_string(&mi_path).unwrap_or_default();
+            let stripped = remove_pretty_from_machine_info(&mi_content);
+            if stripped.trim().is_empty() {
+                let _ = std::fs::remove_file(&mi_path);
+            } else {
+                atomic_write(&mi_path, &stripped)?;
+            }
+            report.reverted.push("pretty-hostname".into());
+        } else {
+            let mi_content = std::fs::read_to_string(&mi_path).unwrap_or_default();
+            let restored = update_machine_info(&mi_content, original)?;
+            atomic_write(&mi_path, &restored)?;
+            report.reverted.push("pretty-hostname".into());
+        }
+    }
+
     if !ctx.dry_run && base == Path::new("/") {
         if let Some(original) = ctx.originals.get("static-hostname") {
             if let Err(e) = set_kernel_hostname(original) {
@@ -254,9 +391,24 @@ fn revert_at(base: &Path, ctx: &RevertCtx) -> Result<RevertReport> {
                     .push(format!("sethostname(2) revert failed: {e}"));
             }
         }
+        if let Some(original) = ctx.originals.get("domainname") {
+            if let Err(e) = set_kernel_domainname(original) {
+                report
+                    .warnings
+                    .push(format!("setdomainname(2) revert failed: {e}"));
+            }
+        }
     }
 
     Ok(report)
+}
+
+fn rotate_at(base: &Path, ctx: &RotateCtx) -> Result<RotateReport> {
+    let report = write_hostname(base, ctx.dry_run, &ctx.overrides, &*ctx.generator)?;
+    Ok(RotateReport {
+        rotated: report.changed.into_iter().map(|c| c.identifier).collect(),
+        warnings: report.warnings,
+    })
 }
 
 impl SmokeModule for HostnameModule {
@@ -287,8 +439,8 @@ impl SmokeModule for HostnameModule {
         apply_at(Path::new("/"), ctx)
     }
 
-    fn rotate(&self, _ctx: &RotateCtx) -> Result<RotateReport> {
-        unimplemented!("smoke mod-hostname rotate")
+    fn rotate(&self, ctx: &RotateCtx) -> Result<RotateReport> {
+        rotate_at(Path::new("/"), ctx)
     }
 
     fn status(&self) -> Result<ModuleStatus> {
@@ -593,5 +745,167 @@ mod tests {
             .trim()
             .to_string();
         assert_ne!(after, "olddomain");
+    }
+
+    #[test]
+    fn apply_creates_machine_info() {
+        let dir = setup_hostname_tempdir();
+        let ctx = make_apply_ctx(42);
+        let report = apply_at(dir.path(), &ctx).unwrap();
+
+        assert!(
+            report
+                .changed
+                .iter()
+                .any(|c| c.identifier == "pretty-hostname")
+        );
+
+        let mi = std::fs::read_to_string(dir.path().join("etc/machine-info")).unwrap();
+        assert!(mi.contains("PRETTY_HOSTNAME="));
+    }
+
+    #[test]
+    fn apply_preserves_existing_machine_info_keys() {
+        let dir = setup_hostname_tempdir();
+        std::fs::write(
+            dir.path().join("etc/machine-info"),
+            "PRETTY_HOSTNAME=\"Old Name\"\nICON_NAME=computer-laptop\n",
+        )
+        .unwrap();
+
+        let ctx = make_apply_ctx(42);
+        apply_at(dir.path(), &ctx).unwrap();
+
+        let mi = std::fs::read_to_string(dir.path().join("etc/machine-info")).unwrap();
+        assert!(!mi.contains("Old Name"));
+        assert!(mi.contains("PRETTY_HOSTNAME="));
+        assert!(mi.contains("ICON_NAME=computer-laptop"));
+    }
+
+    #[test]
+    fn revert_restores_machine_info_with_other_keys() {
+        let dir = setup_hostname_tempdir();
+        std::fs::write(
+            dir.path().join("etc/machine-info"),
+            "PRETTY_HOSTNAME=\"Old Name\"\nICON_NAME=computer-laptop\n",
+        )
+        .unwrap();
+
+        let ctx = make_apply_ctx(42);
+        apply_at(dir.path(), &ctx).unwrap();
+
+        let revert_ctx = RevertCtx {
+            dry_run: false,
+            originals: HashMap::from([
+                ("static-hostname".into(), "oldname".into()),
+                ("pretty-hostname".into(), "Old Name".into()),
+            ]),
+        };
+        revert_at(dir.path(), &revert_ctx).unwrap();
+
+        let mi = std::fs::read_to_string(dir.path().join("etc/machine-info")).unwrap();
+        assert!(mi.contains("\"Old Name\""));
+        assert!(mi.contains("ICON_NAME=computer-laptop"));
+    }
+
+    #[test]
+    fn revert_removes_pretty_but_preserves_other_keys() {
+        let dir = setup_hostname_tempdir();
+        std::fs::write(
+            dir.path().join("etc/machine-info"),
+            "ICON_NAME=computer-laptop\nCHASSIS=laptop\n",
+        )
+        .unwrap();
+
+        let ctx = make_apply_ctx(42);
+        apply_at(dir.path(), &ctx).unwrap();
+
+        let revert_ctx = RevertCtx {
+            dry_run: false,
+            originals: HashMap::from([
+                ("static-hostname".into(), "oldname".into()),
+                ("pretty-hostname".into(), "".into()),
+            ]),
+        };
+        revert_at(dir.path(), &revert_ctx).unwrap();
+
+        let mi = std::fs::read_to_string(dir.path().join("etc/machine-info")).unwrap();
+        assert!(!mi.contains("PRETTY_HOSTNAME"));
+        assert!(mi.contains("ICON_NAME=computer-laptop"));
+        assert!(mi.contains("CHASSIS=laptop"));
+    }
+
+    #[test]
+    fn revert_deletes_machine_info_if_was_absent() {
+        let dir = setup_hostname_tempdir();
+        let ctx = make_apply_ctx(42);
+        apply_at(dir.path(), &ctx).unwrap();
+        assert!(dir.path().join("etc/machine-info").exists());
+
+        let revert_ctx = RevertCtx {
+            dry_run: false,
+            originals: HashMap::from([
+                ("static-hostname".into(), "oldname".into()),
+                ("pretty-hostname".into(), "".into()),
+            ]),
+        };
+        revert_at(dir.path(), &revert_ctx).unwrap();
+        assert!(!dir.path().join("etc/machine-info").exists());
+    }
+
+    #[test]
+    fn hostname_to_pretty_conversion() {
+        assert_eq!(hostname_to_pretty("swift-oak-123"), "Swift Oak 123");
+        assert_eq!(hostname_to_pretty("myhost"), "Myhost");
+        assert_eq!(hostname_to_pretty(""), "");
+        assert_eq!(hostname_to_pretty("swift--oak"), "Swift Oak");
+    }
+
+    #[test]
+    fn extract_domain_from_fqdn() {
+        assert_eq!(
+            extract_domain("host.example.com"),
+            Some("example.com".into())
+        );
+        assert_eq!(extract_domain("simple-name"), None);
+        assert_eq!(extract_domain("host."), None);
+        assert_eq!(extract_domain(".foo"), None);
+    }
+
+    #[test]
+    fn rotate_produces_different_hostname() {
+        let dir = setup_hostname_tempdir();
+
+        let first = {
+            let ctx = RotateCtx {
+                dry_run: false,
+                period: None,
+                profile: smoke_core::Profile::Random,
+                overrides: HashMap::new(),
+                generator: smoke_core::rng::create_generator(smoke_core::Profile::Random, 1),
+            };
+            rotate_at(dir.path(), &ctx).unwrap();
+            std::fs::read_to_string(dir.path().join("etc/hostname"))
+                .unwrap()
+                .trim()
+                .to_string()
+        };
+
+        let second = {
+            let ctx = RotateCtx {
+                dry_run: false,
+                period: None,
+                profile: smoke_core::Profile::Random,
+                overrides: HashMap::new(),
+                generator: smoke_core::rng::create_generator(smoke_core::Profile::Random, 2),
+            };
+            rotate_at(dir.path(), &ctx).unwrap();
+            std::fs::read_to_string(dir.path().join("etc/hostname"))
+                .unwrap()
+                .trim()
+                .to_string()
+        };
+
+        assert_ne!(first, second);
     }
 }
