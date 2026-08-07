@@ -36,11 +36,15 @@
 
 use smoke_core::Category;
 use smoke_core::Result;
+use smoke_core::SmokeError;
 use smoke_core::coverage::{Coverage, Requirements, Risk, RiskLevel, Strategy, Tier};
 use smoke_core::identifier::{Finding, Findings, IdentifierId};
 use smoke_core::module::*;
+use smoke_core::rng::ValueOverride;
 
+use crate::util::atomic_write;
 use crate::util::read_optional;
+use std::collections::HashMap;
 use std::path::Path;
 
 const STATIC_HOSTNAME: &str = "/etc/hostname";
@@ -140,6 +144,121 @@ fn enumerate_at(base: &Path) -> Findings {
     findings
 }
 
+fn resolve_hostname(
+    overrides: &HashMap<IdentifierId, ValueOverride>,
+    generator: &dyn smoke_core::ValueGenerator,
+) -> Option<String> {
+    match overrides.get(&IdentifierId::new("static-hostname")) {
+        Some(ValueOverride::Fixed(v)) => Some(v.clone()),
+        Some(ValueOverride::Random) | Some(ValueOverride::UseProfile) | None => {
+            Some(generator.hostname())
+        }
+        Some(ValueOverride::Keep) => None,
+    }
+}
+
+fn set_kernel_hostname(name: &str) -> Result<()> {
+    let c_name = std::ffi::CString::new(name)
+        .map_err(|e| SmokeError::Module(format!("invalid hostname: {e}")))?;
+    let ret = unsafe { libc::sethostname(c_name.as_ptr(), c_name.as_bytes().len()) };
+    if ret != 0 {
+        return Err(SmokeError::Module(format!(
+            "sethostname failed: {}",
+            std::io::Error::last_os_error()
+        )));
+    }
+    Ok(())
+}
+
+fn apply_at(base: &Path, ctx: &ApplyCtx) -> Result<ApplyReport> {
+    let mut report = ApplyReport::default();
+    let new_hostname = match resolve_hostname(&ctx.overrides, &*ctx.generator) {
+        Some(v) => v,
+        None => return Ok(report),
+    };
+
+    let hostname_path = base.join(STATIC_HOSTNAME.trim_start_matches('/'));
+    let old_hostname = read_optional(&hostname_path);
+    if let Some(ref old) = old_hostname {
+        if old != &new_hostname {
+            if ctx.dry_run {
+                report.changed.push(Change {
+                    identifier: "static-hostname".into(),
+                    old_value: old.clone(),
+                    new_value: new_hostname.clone(),
+                });
+            } else {
+                atomic_write(&hostname_path, &format!("{new_hostname}\n"))?;
+                report.changed.push(Change {
+                    identifier: "static-hostname".into(),
+                    old_value: old.clone(),
+                    new_value: new_hostname.clone(),
+                });
+            }
+        }
+    }
+
+    let mailname_path = base.join(MAILNAME.trim_start_matches('/'));
+    let old_mailname = read_optional(&mailname_path);
+    if let Some(ref old) = old_mailname {
+        if old != &new_hostname {
+            if ctx.dry_run {
+                report.changed.push(Change {
+                    identifier: "mailname".into(),
+                    old_value: old.clone(),
+                    new_value: new_hostname.clone(),
+                });
+            } else {
+                atomic_write(&mailname_path, &format!("{new_hostname}\n"))?;
+                report.changed.push(Change {
+                    identifier: "mailname".into(),
+                    old_value: old.clone(),
+                    new_value: new_hostname.clone(),
+                });
+            }
+        }
+    }
+
+    if !ctx.dry_run && base == Path::new("/") {
+        if let Err(e) = set_kernel_hostname(&new_hostname) {
+            report.warnings.push(format!("sethostname(2) failed: {e}"));
+        }
+    }
+
+    Ok(report)
+}
+
+fn revert_at(base: &Path, ctx: &RevertCtx) -> Result<RevertReport> {
+    let mut report = RevertReport::default();
+
+    for (id, rel) in [("static-hostname", STATIC_HOSTNAME), ("mailname", MAILNAME)] {
+        let path = base.join(rel.trim_start_matches('/'));
+        if !path.exists() {
+            continue;
+        }
+        if let Some(original) = ctx.originals.get(id) {
+            if ctx.dry_run {
+                report.reverted.push(id.to_string());
+                continue;
+            }
+            atomic_write(&path, &format!("{original}\n"))?;
+            report.reverted.push(id.to_string());
+        }
+    }
+
+    if !ctx.dry_run && base == Path::new("/") {
+        if let Some(original) = ctx.originals.get("static-hostname") {
+            if let Err(e) = set_kernel_hostname(original) {
+                report
+                    .warnings
+                    .push(format!("sethostname(2) revert failed: {e}"));
+            }
+        }
+    }
+
+    Ok(report)
+}
+
 impl SmokeModule for HostnameModule {
     fn id(&self) -> &'static str {
         "hostname"
@@ -164,8 +283,8 @@ impl SmokeModule for HostnameModule {
         Ok(enumerate_at(Path::new("/")))
     }
 
-    fn apply(&self, _ctx: &ApplyCtx) -> Result<ApplyReport> {
-        unimplemented!("smoke mod-hostname apply")
+    fn apply(&self, ctx: &ApplyCtx) -> Result<ApplyReport> {
+        apply_at(Path::new("/"), ctx)
     }
 
     fn rotate(&self, _ctx: &RotateCtx) -> Result<RotateReport> {
@@ -176,8 +295,8 @@ impl SmokeModule for HostnameModule {
         Ok(ModuleStatus::default())
     }
 
-    fn revert(&self, _ctx: &RevertCtx) -> Result<RevertReport> {
-        unimplemented!("smoke mod-hostname revert")
+    fn revert(&self, ctx: &RevertCtx) -> Result<RevertReport> {
+        revert_at(Path::new("/"), ctx)
     }
 
     fn coverage(&self) -> Coverage {
@@ -331,5 +450,148 @@ mod tests {
         assert_eq!(module.coverage().achieved_tier, Tier::PartialUserspace);
         assert_eq!(module.risks().level, RiskLevel::Low);
         assert!(module.requires().root);
+    }
+
+    fn setup_hostname_tempdir() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("etc")).unwrap();
+        std::fs::write(dir.path().join("etc/hostname"), "oldname\n").unwrap();
+        dir
+    }
+
+    fn make_apply_ctx(seed: u64) -> ApplyCtx {
+        ApplyCtx {
+            dry_run: false,
+            force: false,
+            profile: smoke_core::Profile::Random,
+            overrides: HashMap::new(),
+            generator: smoke_core::rng::create_generator(smoke_core::Profile::Random, seed),
+        }
+    }
+
+    #[test]
+    fn apply_changes_hostname() {
+        let dir = setup_hostname_tempdir();
+        let ctx = make_apply_ctx(42);
+        let report = apply_at(dir.path(), &ctx).unwrap();
+
+        assert!(
+            report
+                .changed
+                .iter()
+                .any(|c| c.identifier == "static-hostname")
+        );
+
+        let after = std::fs::read_to_string(dir.path().join("etc/hostname"))
+            .unwrap()
+            .trim()
+            .to_string();
+        assert_ne!(after, "oldname");
+        assert!(!after.is_empty());
+    }
+
+    #[test]
+    fn apply_dry_run_no_write() {
+        let dir = setup_hostname_tempdir();
+        let mut ctx = make_apply_ctx(42);
+        ctx.dry_run = true;
+        let report = apply_at(dir.path(), &ctx).unwrap();
+
+        assert!(
+            report
+                .changed
+                .iter()
+                .any(|c| c.identifier == "static-hostname")
+        );
+
+        let after = std::fs::read_to_string(dir.path().join("etc/hostname")).unwrap();
+        assert_eq!(after.trim(), "oldname");
+    }
+
+    #[test]
+    fn revert_restores_original() {
+        let dir = setup_hostname_tempdir();
+        let ctx = make_apply_ctx(42);
+        apply_at(dir.path(), &ctx).unwrap();
+
+        let revert_ctx = RevertCtx {
+            dry_run: false,
+            originals: HashMap::from([("static-hostname".into(), "oldname".into())]),
+        };
+        let report = revert_at(dir.path(), &revert_ctx).unwrap();
+        assert!(report.reverted.iter().any(|id| id == "static-hostname"));
+
+        let after = std::fs::read_to_string(dir.path().join("etc/hostname"))
+            .unwrap()
+            .trim()
+            .to_string();
+        assert_eq!(after, "oldname");
+    }
+
+    #[test]
+    fn apply_revert_roundtrip() {
+        let dir = setup_hostname_tempdir();
+
+        let ctx = make_apply_ctx(99);
+        let apply_report = apply_at(dir.path(), &ctx).unwrap();
+        assert!(!apply_report.changed.is_empty());
+
+        let mut originals = HashMap::new();
+        for change in &apply_report.changed {
+            originals.insert(change.identifier.clone(), change.old_value.clone());
+        }
+
+        let revert_ctx = RevertCtx {
+            dry_run: false,
+            originals,
+        };
+        revert_at(dir.path(), &revert_ctx).unwrap();
+
+        let restored = std::fs::read_to_string(dir.path().join("etc/hostname"))
+            .unwrap()
+            .trim()
+            .to_string();
+        assert_eq!(restored, "oldname");
+    }
+
+    #[test]
+    fn apply_with_pinned_value() {
+        let dir = setup_hostname_tempdir();
+        let mut ctx = make_apply_ctx(42);
+        ctx.overrides.insert(
+            IdentifierId::new("static-hostname"),
+            ValueOverride::Fixed("pinned-host".into()),
+        );
+        let report = apply_at(dir.path(), &ctx).unwrap();
+
+        let after = std::fs::read_to_string(dir.path().join("etc/hostname"))
+            .unwrap()
+            .trim()
+            .to_string();
+        assert_eq!(after, "pinned-host");
+
+        let change = report
+            .changed
+            .iter()
+            .find(|c| c.identifier == "static-hostname")
+            .unwrap();
+        assert_eq!(change.new_value, "pinned-host");
+    }
+
+    #[test]
+    fn apply_changes_mailname() {
+        let dir = setup_hostname_tempdir();
+        std::fs::write(dir.path().join("etc/mailname"), "olddomain\n").unwrap();
+
+        let ctx = make_apply_ctx(42);
+        let report = apply_at(dir.path(), &ctx).unwrap();
+
+        assert!(report.changed.iter().any(|c| c.identifier == "mailname"));
+
+        let after = std::fs::read_to_string(dir.path().join("etc/mailname"))
+            .unwrap()
+            .trim()
+            .to_string();
+        assert_ne!(after, "olddomain");
     }
 }
