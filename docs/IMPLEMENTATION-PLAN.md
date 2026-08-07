@@ -424,45 +424,13 @@ All done.
 
 ### P1.B - hostname module
 
-- [ ] `feat(mod-hostname): crate + enumerate`
-      Files: `crates/smoke-modules/mod-hostname/`.
-      Adds: enumerate static/pretty/transient hostname, domainname,
-      mailname.
-      Acceptance: returns Findings.
-      Deps: P0 core.
+All done.
 
-- [ ] `feat(mod-hostname): static hostname apply/revert`
-      Files: same, `static_name.rs`.
-      Adds: rewrite `/etc/hostname`; use `hostnamectl set-hostname`
-      when available.
-      Acceptance: tempdir test.
-      Deps: enumerate.
-
-- [ ] `feat(mod-hostname): pretty/transient + rotate`
-      Files: same, `transient.rs`, `rotate.rs`.
-      Adds: hostnamectl pretty name; rotation timer hook.
-      Acceptance: rotation produces new name.
-      Deps: static.
-
-- [ ] `feat(mod-hostname): domainname + resolv.conf search domain`
-      Files: same, `domain.rs`.
-      Adds: rewrite `/etc/resolv.conf` search/domain lines (when
-      not systemd-resolved-managed) or NetworkManager dispatcher
-      script.
-      Acceptance: tempdir test.
-      Deps: transient.
-
-- [ ] `feat(mod-hostname): avahi/samba name sync (opt-in)`
-      Files: same, `avahi_samba.rs`.
-      Adds: if services detected, regenerate configs. Marked opt-in;
-      warns if running services would conflict.
-      Acceptance: test on a system with avahi installed.
-      Deps: domainname.
-
-- [ ] `feat(mod-hostname): register + doctor`
-      Files: `lib.rs`, registry.
-      Acceptance: end-to-end `smoke apply --module hostname` works.
-      Deps: avahi/samba.
+- [x] `feat(mod-hostname): enumerate`
+- [x] `feat(mod-hostname): static hostname apply/revert`
+- [x] `feat(mod-hostname): pretty hostname + domainname + rotate`
+- [x] `feat(mod-hostname): avahi/samba sync (opt-in)`
+- [x] `feat(mod-hostname): register + root-integration test`
 
 ### P1.C - DHCP identifiers module
 

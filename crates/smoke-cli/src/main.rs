@@ -24,7 +24,7 @@ use smoke_core::config::{self, SmokeConfig};
 use smoke_core::executor::Executor;
 use smoke_core::registry::Registry;
 use smoke_core::state::{self, State};
-use smoke_modules::MachineIdModule;
+use smoke_modules::{HostnameModule, MachineIdModule};
 use std::path::PathBuf;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
@@ -127,6 +127,7 @@ fn load_state() -> Result<State, Box<dyn std::error::Error>> {
 fn build_registry() -> Registry {
     let mut reg = Registry::new();
     reg.register(Box::new(MachineIdModule::new()));
+    reg.register(Box::new(HostnameModule::new()));
     reg
 }
 
@@ -192,6 +193,9 @@ fn cmd_rotate(
         for id in &report.rotated {
             println!("  rotated: {id}");
             total += 1;
+        }
+        for warning in &report.warnings {
+            eprintln!("  warn: {warning}");
         }
     }
 
@@ -282,6 +286,9 @@ fn cmd_revert(
         for id in &report.reverted {
             println!("  reverted: {id}");
             total += 1;
+        }
+        for warning in &report.warnings {
+            eprintln!("  warn: {warning}");
         }
     }
 

@@ -94,6 +94,15 @@ fn list_shows_machine_id() {
 }
 
 #[test]
+fn list_shows_hostname() {
+    let mut cmd = Command::cargo_bin("smoke").unwrap();
+    cmd.args(["list"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("hostname"));
+}
+
+#[test]
 fn status_no_state() {
     let mut cmd = Command::cargo_bin("smoke").unwrap();
     cmd.args(["status"])
@@ -115,6 +124,15 @@ fn selftest_no_config() {
 fn apply_dry_run_machine_id() {
     let mut cmd = Command::cargo_bin("smoke").unwrap();
     cmd.args(["apply", "--module", "machine-id", "--dry-run"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("dry-run"));
+}
+
+#[test]
+fn apply_dry_run_hostname() {
+    let mut cmd = Command::cargo_bin("smoke").unwrap();
+    cmd.args(["apply", "--module", "hostname", "--dry-run"])
         .assert()
         .success()
         .stdout(predicate::str::contains("dry-run"));
