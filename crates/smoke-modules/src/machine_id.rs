@@ -267,8 +267,10 @@ fn revert_at(base: &Path, ctx: &RevertCtx) -> Result<RevertReport> {
         if let Ok(entries) = std::fs::read_dir(&glob_base) {
             for entry in entries.flatten() {
                 let mid = entry.path().join("machine-id");
-                if mid.exists() && !ctx.dry_run {
-                    let _ = atomic_write(&mid, original);
+                if mid.exists() {
+                    if !ctx.dry_run {
+                        let _ = atomic_write(&mid, original);
+                    }
                     report.reverted.push("pkg-machine-id".into());
                 }
             }
@@ -614,5 +616,48 @@ mod tests {
         };
 
         assert_ne!(first_val, second_val);
+    }
+
+    #[test]
+    fn dry_run_revert_reports_pkg_machine_id() {
+        let dir = setup_tempdir();
+
+        fs::create_dir_all(dir.path().join("var/lib/foo")).unwrap();
+        fs::write(
+            dir.path().join("var/lib/foo/machine-id"),
+            "aaaabbbbccccddddeeeeffff00112233\n",
+        )
+        .unwrap();
+
+        let ctx = make_ctx(42);
+        apply_at(dir.path(), &ctx).unwrap();
+
+        let mut originals = std::collections::HashMap::new();
+        originals.insert(
+            "system-machine-id".into(),
+            "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6".into(),
+        );
+        originals.insert(
+            "dbus-machine-id".into(),
+            "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6".into(),
+        );
+        originals.insert(
+            "pkg-machine-id".into(),
+            "aaaabbbbccccddddeeeeffff00112233".into(),
+        );
+
+        let revert_ctx = RevertCtx {
+            dry_run: true,
+            originals,
+        };
+        let report = revert_at(dir.path(), &revert_ctx).unwrap();
+
+        assert!(
+            report
+                .reverted
+                .iter()
+                .any(|id| id == "pkg-machine-id"),
+            "dry_run revert should include pkg-machine-id in report"
+        );
     }
 }
