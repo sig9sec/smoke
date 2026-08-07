@@ -14,14 +14,30 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-//! Identifier modules for the `smoke` privacy suite.
-//!
-//! Each submodule implements [`SmokeModule`](smoke_core::SmokeModule)
-//! for one identifier group (machine-id, hostname, MAC, etc.).
+use smoke_core::Result;
+use smoke_core::SmokeError;
+use std::path::Path;
 
-pub mod hostname;
-pub mod machine_id;
-pub mod util;
+pub fn atomic_write(path: &Path, content: &str) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| SmokeError::Io {
+            path: parent.to_path_buf(),
+            source: e,
+        })?;
+    }
+    let tmp = path.with_extension("tmp");
+    std::fs::write(&tmp, content).map_err(|e| SmokeError::Io {
+        path: tmp.clone(),
+        source: e,
+    })?;
+    std::fs::rename(&tmp, path).map_err(|e| SmokeError::Io {
+        path: path.to_path_buf(),
+        source: e,
+    })
+}
 
-pub use hostname::HostnameModule;
-pub use machine_id::MachineIdModule;
+pub fn read_optional(path: &Path) -> Option<String> {
+    std::fs::read_to_string(path)
+        .ok()
+        .map(|s| s.trim().to_string())
+}

@@ -44,6 +44,7 @@ use smoke_core::identifier::{Finding, Findings, IdentifierId};
 use smoke_core::module::*;
 use smoke_core::rng::ValueOverride;
 
+use crate::util::atomic_write;
 use std::path::Path;
 
 const PATHS: &[(&str, &str)] = &[
@@ -117,24 +118,6 @@ fn enumerate_at(base: &Path) -> Findings {
     }
 
     findings
-}
-
-fn atomic_write(path: &Path, content: &str) -> Result<()> {
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| SmokeError::Io {
-            path: parent.to_path_buf(),
-            source: e,
-        })?;
-    }
-    let tmp = path.with_extension("tmp");
-    std::fs::write(&tmp, content).map_err(|e| SmokeError::Io {
-        path: tmp.clone(),
-        source: e,
-    })?;
-    std::fs::rename(&tmp, path).map_err(|e| SmokeError::Io {
-        path: path.to_path_buf(),
-        source: e,
-    })
 }
 
 fn resolve_value(

@@ -12,6 +12,7 @@ categories = ["os"]
 
 [dependencies]
 smoke-core.workspace = true
+libc.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
