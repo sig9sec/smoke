@@ -653,10 +653,7 @@ mod tests {
         let report = revert_at(dir.path(), &revert_ctx).unwrap();
 
         assert!(
-            report
-                .reverted
-                .iter()
-                .any(|id| id == "pkg-machine-id"),
+            report.reverted.iter().any(|id| id == "pkg-machine-id"),
             "dry_run revert should include pkg-machine-id in report"
         );
     }
