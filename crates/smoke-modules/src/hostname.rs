@@ -52,6 +52,8 @@ const MACHINE_INFO: &str = "/etc/machine-info";
 const RUNTIME_HOSTNAME: &str = "/proc/sys/kernel/hostname";
 const DOMAINNAME: &str = "/proc/sys/kernel/domainname";
 const MAILNAME: &str = "/etc/mailname";
+const AVAHI_CONF: &str = "/etc/avahi/avahi-daemon.conf";
+const SAMBA_CONF: &str = "/etc/samba/smb.conf";
 
 pub struct HostnameModule;
 
@@ -337,6 +339,30 @@ fn write_hostname(
         }
     }
 
+    if let Some(change) = sync_optional_service(
+        base,
+        AVAHI_CONF,
+        "server",
+        "host-name",
+        "avahi-hostname",
+        &new_hostname,
+        dry_run,
+    )? {
+        report.changed.push(change);
+    }
+
+    if let Some(change) = sync_optional_service(
+        base,
+        SAMBA_CONF,
+        "global",
+        "netbios name",
+        "netbios-name",
+        &new_hostname,
+        dry_run,
+    )? {
+        report.changed.push(change);
+    }
+
     Ok(report)
 }
 
@@ -400,6 +426,38 @@ fn revert_at(base: &Path, ctx: &RevertCtx) -> Result<RevertReport> {
         }
     }
 
+    if let Some(original) = ctx.originals.get("avahi-hostname") {
+        if sync_optional_service(
+            base,
+            AVAHI_CONF,
+            "server",
+            "host-name",
+            "avahi-hostname",
+            original,
+            ctx.dry_run,
+        )?
+        .is_some()
+        {
+            report.reverted.push("avahi-hostname".into());
+        }
+    }
+
+    if let Some(original) = ctx.originals.get("netbios-name") {
+        if sync_optional_service(
+            base,
+            SAMBA_CONF,
+            "global",
+            "netbios name",
+            "netbios-name",
+            original,
+            ctx.dry_run,
+        )?
+        .is_some()
+        {
+            report.reverted.push("netbios-name".into());
+        }
+    }
+
     Ok(report)
 }
 
@@ -409,6 +467,107 @@ fn rotate_at(base: &Path, ctx: &RotateCtx) -> Result<RotateReport> {
         rotated: report.changed.into_iter().map(|c| c.identifier).collect(),
         warnings: report.warnings,
     })
+}
+
+fn ini_key_matches(line: &str, target_key: &str) -> bool {
+    let uncommented = line.trim().strip_prefix('#').unwrap_or(line.trim());
+    if let Some(eq_idx) = uncommented.find('=') {
+        let key = uncommented[..eq_idx].trim();
+        key == target_key
+    } else {
+        false
+    }
+}
+
+fn update_ini_key(content: &str, section: &str, key: &str, value: &str) -> String {
+    let mut lines: Vec<String> = content.lines().map(String::from).collect();
+    let mut in_section = false;
+    let mut found = false;
+
+    for line in &mut lines {
+        let trimmed = line.trim();
+        if trimmed.starts_with('[') && trimmed.ends_with(']') {
+            in_section = trimmed == format!("[{section}]");
+            continue;
+        }
+        if in_section && !found && ini_key_matches(line, key) {
+            *line = format!("{key} = {value}");
+            found = true;
+        }
+    }
+
+    if !found {
+        let insert_line = format!("{key} = {value}");
+        let mut insert_idx = 0;
+        for (i, line) in lines.iter().enumerate() {
+            if line.trim() == format!("[{section}]") {
+                insert_idx = i + 1;
+            }
+        }
+        if insert_idx > 0 {
+            lines.insert(insert_idx, insert_line);
+        } else {
+            lines.push(format!("[{section}]"));
+            lines.push(insert_line);
+        }
+    }
+
+    lines.join("\n") + "\n"
+}
+
+fn extract_ini_value(content: &str, section: &str, key: &str) -> Option<String> {
+    let mut in_section = false;
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('[') && trimmed.ends_with(']') {
+            in_section = trimmed == format!("[{section}]");
+            continue;
+        }
+        if in_section && ini_key_matches(line, key) {
+            let uncommented = trimmed.strip_prefix('#').unwrap_or(trimmed);
+            if let Some(eq_idx) = uncommented.find('=') {
+                return Some(uncommented[eq_idx + 1..].trim().to_string());
+            }
+        }
+    }
+    None
+}
+
+fn sync_optional_service(
+    base: &Path,
+    conf_rel: &str,
+    section: &str,
+    key: &str,
+    identifier: &str,
+    hostname: &str,
+    dry_run: bool,
+) -> Result<Option<Change>> {
+    let path = base.join(conf_rel.trim_start_matches('/'));
+    if !path.exists() {
+        return Ok(None);
+    }
+    let content = std::fs::read_to_string(&path).map_err(|e| SmokeError::Io {
+        path: path.clone(),
+        source: e,
+    })?;
+    let old = extract_ini_value(&content, section, key);
+    if old.as_deref() == Some(hostname) {
+        return Ok(None);
+    }
+    if dry_run {
+        return Ok(Some(Change {
+            identifier: identifier.to_string(),
+            old_value: old.unwrap_or_default(),
+            new_value: hostname.to_string(),
+        }));
+    }
+    let updated = update_ini_key(&content, section, key, hostname);
+    atomic_write(&path, &updated)?;
+    Ok(Some(Change {
+        identifier: identifier.to_string(),
+        old_value: old.unwrap_or_default(),
+        new_value: hostname.to_string(),
+    }))
 }
 
 impl SmokeModule for HostnameModule {
@@ -907,5 +1066,126 @@ mod tests {
         };
 
         assert_ne!(first, second);
+    }
+
+    #[test]
+    fn apply_syncs_avahi_config() {
+        let dir = setup_hostname_tempdir();
+        std::fs::create_dir_all(dir.path().join("etc/avahi")).unwrap();
+        std::fs::write(
+            dir.path().join("etc/avahi/avahi-daemon.conf"),
+            "[server]\n#host-name = oldname\nuse-ipv4=yes\n",
+        )
+        .unwrap();
+
+        let ctx = make_apply_ctx(42);
+        let report = apply_at(dir.path(), &ctx).unwrap();
+
+        assert!(
+            report
+                .changed
+                .iter()
+                .any(|c| c.identifier == "avahi-hostname")
+        );
+
+        let conf = std::fs::read_to_string(dir.path().join("etc/avahi/avahi-daemon.conf")).unwrap();
+        assert!(conf.contains("host-name ="));
+        assert!(!conf.contains("#host-name"));
+        assert!(conf.contains("use-ipv4=yes"));
+    }
+
+    #[test]
+    fn apply_syncs_samba_config() {
+        let dir = setup_hostname_tempdir();
+        std::fs::create_dir_all(dir.path().join("etc/samba")).unwrap();
+        std::fs::write(
+            dir.path().join("etc/samba/smb.conf"),
+            "[global]\nnetbios name = oldname\nworkgroup = WORKGROUP\n",
+        )
+        .unwrap();
+
+        let ctx = make_apply_ctx(42);
+        let report = apply_at(dir.path(), &ctx).unwrap();
+
+        assert!(
+            report
+                .changed
+                .iter()
+                .any(|c| c.identifier == "netbios-name")
+        );
+
+        let conf = std::fs::read_to_string(dir.path().join("etc/samba/smb.conf")).unwrap();
+        assert!(!conf.contains("oldname"));
+        assert!(conf.contains("workgroup = WORKGROUP"));
+    }
+
+    #[test]
+    fn apply_skips_missing_service_configs() {
+        let dir = setup_hostname_tempdir();
+        let ctx = make_apply_ctx(42);
+        let report = apply_at(dir.path(), &ctx).unwrap();
+
+        assert!(
+            !report
+                .changed
+                .iter()
+                .any(|c| c.identifier == "avahi-hostname")
+        );
+        assert!(
+            !report
+                .changed
+                .iter()
+                .any(|c| c.identifier == "netbios-name")
+        );
+    }
+
+    #[test]
+    fn ini_key_does_not_match_prefix_siblings() {
+        let content = "[global]\nnetbios name = old\nnetbios alias = other\n";
+        let updated = update_ini_key(content, "global", "netbios name", "new");
+        assert!(updated.contains("netbios name = new"));
+        assert!(updated.contains("netbios alias = other"));
+        assert!(!updated.contains("netbios alias = new"));
+    }
+
+    #[test]
+    fn ini_key_replaces_only_first_match() {
+        let content = "[server]\nhost-name = a\nhost-name = b\n";
+        let updated = update_ini_key(content, "server", "host-name", "new");
+        assert!(updated.contains("host-name = new"));
+        assert!(updated.contains("host-name = b"));
+    }
+
+    #[test]
+    fn revert_restores_avahi_config() {
+        let dir = setup_hostname_tempdir();
+        std::fs::create_dir_all(dir.path().join("etc/avahi")).unwrap();
+        std::fs::write(
+            dir.path().join("etc/avahi/avahi-daemon.conf"),
+            "[server]\n#host-name = oldname\nuse-ipv4=yes\n",
+        )
+        .unwrap();
+
+        let ctx = make_apply_ctx(42);
+        let report = apply_at(dir.path(), &ctx).unwrap();
+
+        let avahi_change = report
+            .changed
+            .iter()
+            .find(|c| c.identifier == "avahi-hostname")
+            .unwrap();
+
+        let revert_ctx = RevertCtx {
+            dry_run: false,
+            originals: HashMap::from([
+                ("static-hostname".into(), "oldname".into()),
+                ("pretty-hostname".into(), "".into()),
+                ("avahi-hostname".into(), avahi_change.old_value.clone()),
+            ]),
+        };
+        revert_at(dir.path(), &revert_ctx).unwrap();
+
+        let conf = std::fs::read_to_string(dir.path().join("etc/avahi/avahi-daemon.conf")).unwrap();
+        assert!(conf.contains("use-ipv4=yes"));
     }
 }
