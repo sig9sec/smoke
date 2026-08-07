@@ -44,6 +44,7 @@ use smoke_core::rng::ValueOverride;
 
 use crate::util::atomic_write;
 use crate::util::read_optional;
+use crate::util::read_optional_or_report;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -81,8 +82,13 @@ fn parse_machine_info(content: &str) -> Option<String> {
     None
 }
 
-fn read_finding(id: &str, path: &Path, category: Category) -> Option<Finding> {
-    let content = read_optional(path)?;
+fn read_finding(
+    id: &str,
+    path: &Path,
+    category: Category,
+    partial_failures: &mut Vec<String>,
+) -> Option<Finding> {
+    let content = read_optional_or_report(path, partial_failures)?;
     if content.is_empty() {
         return None;
     }
@@ -102,12 +108,13 @@ fn enumerate_at(base: &Path) -> Findings {
         "static-hostname",
         &base.join(STATIC_HOSTNAME.trim_start_matches('/')),
         Category::Hostname,
+        &mut findings.partial_failures,
     ) {
         findings.push(f);
     }
 
     let mi_path = base.join(MACHINE_INFO.trim_start_matches('/'));
-    if let Some(content) = read_optional(&mi_path) {
+    if let Some(content) = read_optional_or_report(&mi_path, &mut findings.partial_failures) {
         if let Some(pretty) = parse_machine_info(&content) {
             findings.push(Finding {
                 id: IdentifierId::new("pretty-hostname"),
@@ -123,6 +130,7 @@ fn enumerate_at(base: &Path) -> Findings {
         "runtime-hostname",
         &base.join(RUNTIME_HOSTNAME.trim_start_matches('/')),
         Category::Hostname,
+        &mut findings.partial_failures,
     ) {
         findings.push(f);
     }
@@ -131,6 +139,7 @@ fn enumerate_at(base: &Path) -> Findings {
         "domainname",
         &base.join(DOMAINNAME.trim_start_matches('/')),
         Category::Hostname,
+        &mut findings.partial_failures,
     ) {
         findings.push(f);
     }
@@ -139,6 +148,7 @@ fn enumerate_at(base: &Path) -> Findings {
         "mailname",
         &base.join(MAILNAME.trim_start_matches('/')),
         Category::Hostname,
+        &mut findings.partial_failures,
     ) {
         findings.push(f);
     }

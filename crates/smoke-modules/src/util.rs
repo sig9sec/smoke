@@ -41,3 +41,14 @@ pub fn read_optional(path: &Path) -> Option<String> {
         .ok()
         .map(|s| s.trim().to_string())
 }
+
+pub fn read_optional_or_report(path: &Path, partial_failures: &mut Vec<String>) -> Option<String> {
+    match std::fs::read_to_string(path) {
+        Ok(content) => Some(content.trim().to_string()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+        Err(e) => {
+            partial_failures.push(format!("{}: {e}", path.display()));
+            None
+        }
+    }
+}
