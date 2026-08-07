@@ -50,6 +50,8 @@ pub enum Commands {
         module: Vec<String>,
         #[arg(long)]
         period: Option<String>,
+        #[arg(long)]
+        dry_run: bool,
     },
     Status {
         #[arg(long)]
@@ -68,6 +70,8 @@ pub enum Commands {
         all: bool,
         #[arg(long)]
         force: bool,
+        #[arg(long)]
+        dry_run: bool,
     },
     Enable {
         module: String,

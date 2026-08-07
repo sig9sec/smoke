@@ -58,10 +58,10 @@ fn main() {
             dry_run,
             force,
         } => cmd_apply(module, profile, dry_run, force, &config_path),
-        Commands::Rotate { module, period } => cmd_rotate(module, period, &config_path),
+        Commands::Rotate { module, period, dry_run } => cmd_rotate(module, period, dry_run, &config_path),
         Commands::Status { module, json } => cmd_status(module, json),
         Commands::Doctor { fix } => cmd_doctor(fix),
-        Commands::Revert { module, all, force } => cmd_revert(module, all, force, &config_path),
+        Commands::Revert { module, all, force, dry_run } => cmd_revert(module, all, force, dry_run, &config_path),
         Commands::Enable { module } => cmd_enable(module),
         Commands::Disable { module } => cmd_disable(module),
         Commands::List { category, status } => cmd_list(category, status, &config_path),
@@ -177,6 +177,7 @@ fn cmd_apply(
 fn cmd_rotate(
     module: Vec<String>,
     _period: Option<String>,
+    dry_run: bool,
     config_path: &Option<PathBuf>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let config = load_config_from(config_path)?;
@@ -186,7 +187,7 @@ fn cmd_rotate(
     let registry = build_registry();
     let module_ids: Vec<&str> = module.iter().map(|s| s.as_str()).collect();
     let mut exec = Executor::new(&registry, &config, &mut state, &backup);
-    let reports = exec.rotate(&module_ids, false)?;
+    let reports = exec.rotate(&module_ids, dry_run)?;
 
     let mut total = 0;
     for report in &reports {
@@ -199,12 +200,15 @@ fn cmd_rotate(
         }
     }
 
-    if total > 0 {
+    if dry_run {
+        println!("dry-run: {total} rotation(s) planned");
+    } else if total > 0 {
         let state_path = state::io::default_state_path();
         state::io::save(&state_path, &state)?;
+        println!("rotated: {total} identifier(s)");
+    } else {
+        println!("nothing to rotate");
     }
-
-    println!("rotated: {total} identifier(s)");
 
     Ok(())
 }
@@ -270,6 +274,7 @@ fn cmd_revert(
     module: Vec<String>,
     _all: bool,
     _force: bool,
+    dry_run: bool,
     config_path: &Option<PathBuf>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let config = load_config_from(config_path)?;
@@ -279,7 +284,7 @@ fn cmd_revert(
     let registry = build_registry();
     let module_ids: Vec<&str> = module.iter().map(|s| s.as_str()).collect();
     let mut exec = Executor::new(&registry, &config, &mut state, &backup);
-    let reports = exec.revert(&module_ids, false)?;
+    let reports = exec.revert(&module_ids, dry_run)?;
 
     let mut total = 0;
     for report in &reports {
@@ -292,12 +297,15 @@ fn cmd_revert(
         }
     }
 
-    if total > 0 {
+    if dry_run {
+        println!("dry-run: {total} revert(s) planned");
+    } else if total > 0 {
         let state_path = state::io::default_state_path();
         state::io::save(&state_path, &state)?;
+        println!("reverted: {total} identifier(s)");
+    } else {
+        println!("nothing to revert");
     }
-
-    println!("reverted: {total} identifier(s)");
 
     Ok(())
 }
