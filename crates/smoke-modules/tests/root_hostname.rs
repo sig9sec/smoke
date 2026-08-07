@@ -157,13 +157,17 @@ fn real_domainname_apply_revert() {
         "kernel domainname should be set"
     );
 
+    let domain_change = report.changed.iter().find(|c| c.identifier == "domainname");
+    assert!(
+        domain_change.is_some(),
+        "expected domainname in changes when hostname is FQDN"
+    );
+    assert_eq!(domain_change.unwrap().new_value, "example.com");
+
     let mut originals = HashMap::new();
     for change in &report.changed {
         originals.insert(change.identifier.clone(), change.old_value.clone());
     }
-    originals
-        .entry("domainname".into())
-        .or_insert(original_domain.clone());
 
     let revert_ctx = RevertCtx {
         dry_run: false,

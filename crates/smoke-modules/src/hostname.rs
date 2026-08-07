@@ -325,17 +325,36 @@ fn write_hostname(
         }
     }
 
+    let domain_path = base.join(DOMAINNAME.trim_start_matches('/'));
+    let old_domainname = read_optional(&domain_path);
+
+    if let Some(domain) = extract_domain(&new_hostname) {
+        let current_domain = old_domainname.as_deref().unwrap_or("");
+        if current_domain != domain {
+            if dry_run {
+                report.changed.push(Change {
+                    identifier: "domainname".into(),
+                    old_value: current_domain.to_string(),
+                    new_value: domain,
+                });
+            } else if base == Path::new("/") {
+                report.changed.push(Change {
+                    identifier: "domainname".into(),
+                    old_value: current_domain.to_string(),
+                    new_value: domain.clone(),
+                });
+                if let Err(e) = set_kernel_domainname(&domain) {
+                    report
+                        .warnings
+                        .push(format!("setdomainname(2) failed: {e}"));
+                }
+            }
+        }
+    }
+
     if !dry_run && base == Path::new("/") {
         if let Err(e) = set_kernel_hostname(&new_hostname) {
             report.warnings.push(format!("sethostname(2) failed: {e}"));
-        }
-
-        if let Some(domain) = extract_domain(&new_hostname) {
-            if let Err(e) = set_kernel_domainname(&domain) {
-                report
-                    .warnings
-                    .push(format!("setdomainname(2) failed: {e}"));
-            }
         }
     }
 
@@ -470,9 +489,12 @@ fn rotate_at(base: &Path, ctx: &RotateCtx) -> Result<RotateReport> {
 }
 
 fn ini_key_matches(line: &str, target_key: &str) -> bool {
-    let uncommented = line.trim().strip_prefix('#').unwrap_or(line.trim());
-    if let Some(eq_idx) = uncommented.find('=') {
-        let key = uncommented[..eq_idx].trim();
+    let trimmed = line.trim();
+    if trimmed.starts_with('#') {
+        return false;
+    }
+    if let Some(eq_idx) = trimmed.find('=') {
+        let key = trimmed[..eq_idx].trim();
         key == target_key
     } else {
         false
@@ -1089,9 +1111,18 @@ mod tests {
         );
 
         let conf = std::fs::read_to_string(dir.path().join("etc/avahi/avahi-daemon.conf")).unwrap();
-        assert!(conf.contains("host-name ="));
-        assert!(!conf.contains("#host-name"));
         assert!(conf.contains("use-ipv4=yes"));
+        assert!(
+            conf.contains("#host-name = oldname"),
+            "commented original should be preserved"
+        );
+
+        let change = report
+            .changed
+            .iter()
+            .find(|c| c.identifier == "avahi-hostname")
+            .unwrap();
+        assert!(conf.contains(&format!("host-name = {}", change.new_value)));
     }
 
     #[test]
@@ -1187,5 +1218,13 @@ mod tests {
 
         let conf = std::fs::read_to_string(dir.path().join("etc/avahi/avahi-daemon.conf")).unwrap();
         assert!(conf.contains("use-ipv4=yes"));
+        assert!(
+            conf.contains("#host-name = oldname"),
+            "commented original should be preserved"
+        );
+        assert!(
+            conf.contains(&format!("host-name = {}", avahi_change.old_value)),
+            "active host-name should be restored to backed-up value"
+        );
     }
 }
