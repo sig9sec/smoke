@@ -209,6 +209,7 @@ impl<'a> Executor<'a> {
 }
 
 fn is_root() -> bool {
+    // SAFETY: geteuid takes no arguments and only reads kernel state.
     unsafe { libc::geteuid() == 0 }
 }
 

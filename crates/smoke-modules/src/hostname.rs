@@ -162,6 +162,8 @@ fn resolve_hostname(
 fn set_kernel_hostname(name: &str) -> Result<()> {
     let c_name = std::ffi::CString::new(name)
         .map_err(|e| SmokeError::Module(format!("invalid hostname: {e}")))?;
+    // SAFETY: c_name is a valid CString; the kernel only reads len bytes
+    // from the pointer and does not retain it after the syscall returns.
     let ret = unsafe { libc::sethostname(c_name.as_ptr(), c_name.as_bytes().len()) };
     if ret != 0 {
         return Err(SmokeError::Module(format!(
@@ -175,6 +177,8 @@ fn set_kernel_hostname(name: &str) -> Result<()> {
 fn set_kernel_domainname(name: &str) -> Result<()> {
     let c_name = std::ffi::CString::new(name)
         .map_err(|e| SmokeError::Module(format!("invalid domainname: {e}")))?;
+    // SAFETY: c_name is a valid CString; the kernel only reads len bytes
+    // from the pointer and does not retain it after the syscall returns.
     let ret = unsafe { libc::setdomainname(c_name.as_ptr(), c_name.as_bytes().len()) };
     if ret != 0 {
         return Err(SmokeError::Module(format!(
